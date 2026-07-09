@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from typing import Literal
 
 PassFail = Literal["PASS", "FAIL", "NEEDS_IMPROVEMENT"]
-Overall = Literal["READY", "NEEDS_IMPROVEMENT"]
+Overall = Literal["READY", "NOT_READY"]
 
 
 class ReelMetadata(BaseModel):
@@ -30,6 +30,7 @@ class VisualScene(BaseModel):
     time_range: str
     visual: str
     animation: str
+    camera: str
     on_screen_text: str
     purpose: str
 

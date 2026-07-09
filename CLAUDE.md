@@ -38,10 +38,16 @@ the validated `ReelScriptOutput`. The internal reasoning fields (hook,
 analogy, technical_explanation, concept_mistakes, interview, CTA) are
 never shown to the caller for this purpose — they exist purely to be
 generated and validated; only the compiled package and the quality
-report's PASS/FAIL surface. This was a deliberate choice over having the
-LLM write the voice script directly: composing validated fields with
-string templates keeps one single source of truth and adds zero latency,
-versus a second free-form call that could drift from what was validated.
+report's PASS/FAIL surface.
+
+`voice_script` is a straight join of `visual_storyboard[i].voice`, in
+that order — it is NOT independently composed from
+problem/analogy/technical_explanation. That used to be two different
+texts describing the same reel (manual review caught them drifting
+apart from the sync timeline). `StoryboardShot` is documented as "these
+shots ARE the reel" for this reason: one self-contained idea per shot's
+`voice` line, in narrative order, IS the whole spoken script. Don't
+reintroduce a separate voice-composition path — it reopens the drift bug.
 
 Purposes can have an independent critic agent auto-run after generation
 (currently only `reel` -> `reel-critic`). This is a SEPARATE LLM call

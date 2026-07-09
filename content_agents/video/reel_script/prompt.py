@@ -69,9 +69,12 @@ untouched. `--hard` = HEAD + index + working dir. Never say --mixed
 touches the working dir, or --soft touches the index.
 
 ## Safety rule — non-negotiable
-Never say reset --hard/rebase/filter-branch "removes"/"deletes" a
-secret or credential — it can persist in reflog/the object database
-until garbage collected. Exposed secrets must be rotated regardless.
+Never say a commit is "deleted"/"disappears"/"gone" after reset or
+rebase — the object persists in the object database and is recoverable
+via reflog until garbage collected; only the branch pointer stops
+referencing it. This applies everywhere, not just when discussing
+secrets — but is especially critical there: exposed secrets/credentials
+must be rotated regardless of any history rewrite.
 
 ## Real project example rules
 industry_context (e.g. "software team") + scenario + problem + solution
@@ -95,12 +98,18 @@ the CTA — one of: comment-for-a-specific-reward ("Comment X and I'll
 send the cheat sheet"), tag a friend, save-this-for-later, or follow-a-
 named-series. Banned: any comment-ask with no named reward.
 
-## Storyboard rules — WHO/WHERE/WHAT ACTION, every scene
-No generic visuals ("show logo"). `visual` states WHO's on screen, WHERE,
-WHAT ACTION — e.g. "A developer at a laptop; terminal shows commits
-A-B-C, C highlighted red." `animation` names the specific motion (e.g.
-"HEAD slides backward from C to B"). `voice` must match what `visual`
-shows. At least 4 scenes, full 60s.
+## Storyboard rules — these shots ARE the voice script
+There is no separate narration: voice_script is compiled by joining
+every shot's `voice` line in order. So: at least 6 shots, ONE
+self-contained idea per shot's `voice` (never cram HEAD move + index
+change + working-dir change into one line — that's 3 shots, not one),
+covering hook -> problem -> analogy -> technical (2+ shots) -> real
+example -> memory anchor + CTA, in that order. No generic visuals
+("show logo"). `visual` states WHO's on screen, WHERE, WHAT ACTION —
+e.g. "A developer at a laptop; terminal shows commits A-B-C, C
+highlighted red." `animation` names the specific motion (e.g. "HEAD
+slides backward from C to B"). `camera` says how it's shot (e.g. "Zoom
+into the commit history" or "Static wide shot"). Full 60s.
 
 ## Comparison rule
 If the subject is a comparison ("X vs Y") only, populate `comparison`:

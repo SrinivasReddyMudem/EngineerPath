@@ -59,8 +59,8 @@ def render_reel_script(o) -> str:
     ]
     for shot in o.visual_storyboard:
         lines.append(
-            f"- [{shot.time_range}] {shot.visual} | animation: {shot.animation} | voice: \"{shot.voice}\" | "
-            f"text: \"{shot.on_screen_text}\" | goal: {shot.learning_objective}"
+            f"- [{shot.time_range}] {shot.visual} | animation: {shot.animation} | camera: {shot.camera} | "
+            f"voice: \"{shot.voice}\" | text: \"{shot.on_screen_text}\" | goal: {shot.learning_objective}"
         )
     qs = o.quality_score
     lines += [
@@ -136,6 +136,7 @@ def render_production_package(o) -> str:
             f"**Scene {scene.scene_number}** ({scene.time_range})",
             f"- Visual: {scene.visual}",
             f"- Animation: {scene.animation}",
+            f"- Camera: {scene.camera}",
             f"- Text: {scene.on_screen_text}",
             f"- Purpose: {scene.purpose}\n",
         ]

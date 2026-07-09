@@ -26,7 +26,8 @@ MAX_MISTAKE_ENTRIES = 3  # content boundary: one reel covers one transformation,
 MIN_MISTAKE_FIELD_LEN = 15
 MIN_INTERVIEW_FIELD_LEN = 15
 MIN_STRONG_ANSWER_LEN = 60  # loose proxy for "covers definition + mechanism + example" — a terse but accurate answer can be short
-MIN_STORYBOARD_SHOTS = 4
+MIN_STORYBOARD_SHOTS = 6  # voice_script is now compiled FROM these shots — enough shots to carry hook/problem/analogy/technical/example/anchor+cta as separate one-idea lines
+MIN_CAMERA_LEN = 8
 MIN_VISUAL_WORDS = 12  # WHO/WHERE/WHAT ACTION needs real sentence structure, not a 2-word label
 MIN_ANIMATION_WORDS = 6
 MIN_VOICE_LEN = 10
@@ -149,7 +150,7 @@ def validate(output: ReelScriptOutput) -> None:
     checks = [
         _check_content_plan, _check_no_preamble, _check_hook_not_fear_or_generic, _check_problem,
         _check_analogy, _check_analogy_completeness, _check_technical_explanation,
-        _check_reset_mode_accuracy, _check_technical_safety, _check_real_project_example,
+        _check_reset_mode_accuracy, _check_no_commit_deletion_claim, _check_technical_safety, _check_real_project_example,
         _check_concept_mistakes, _check_interview, _check_cta, _check_memory_anchor,
         _check_storyboard, _check_quality_score, _check_comparison,
     ]
@@ -276,13 +277,12 @@ def _sentence_asserts_negation(sentence_lower: str) -> bool:
     return any(neg in sentence_lower for neg in NEGATION_INDICATORS)
 
 
-def _check_reset_mode_accuracy(output: ReelScriptOutput) -> None:
+def _fact_bearing_fields(output: ReelScriptOutput) -> dict[str, str]:
     """
-    Fact-check specifically for git reset mode claims — the exact class of
-    error found in manual review: `--mixed` does NOT touch the working
-    directory (only HEAD + index); `--soft` touches neither index nor
-    working directory. Only fires on sentences that explicitly discuss
-    reset, to avoid false positives on unrelated content.
+    Every field that makes a factual claim a viewer will actually hear or
+    read — including storyboard voice lines, since those ARE the voice
+    script now (see StoryboardShot docstring). Excludes weak_answer
+    (deliberately wrong, by design) and questions (no factual claim).
     """
     te = output.technical_explanation
     fields = {
@@ -295,8 +295,20 @@ def _check_reset_mode_accuracy(output: ReelScriptOutput) -> None:
     }
     for i, entry in enumerate(output.concept_mistakes):
         fields[f"concept_mistakes[{i}].correct_understanding"] = entry.correct_understanding
+    for i, shot in enumerate(output.visual_storyboard):
+        fields[f"visual_storyboard[{i}].voice"] = shot.voice
+    return fields
 
-    for field_name, text in fields.items():
+
+def _check_reset_mode_accuracy(output: ReelScriptOutput) -> None:
+    """
+    Fact-check specifically for git reset mode claims — the exact class of
+    error found in manual review: `--mixed` does NOT touch the working
+    directory (only HEAD + index); `--soft` touches neither index nor
+    working directory. Only fires on sentences that explicitly discuss
+    reset, to avoid false positives on unrelated content.
+    """
+    for field_name, text in _fact_bearing_fields(output).items():
         for sentence in _split_sentences(text):
             s = sentence.lower()
             if "reset" not in s or _sentence_asserts_negation(s):
@@ -315,6 +327,29 @@ def _check_reset_mode_accuracy(output: ReelScriptOutput) -> None:
                 )
 
 
+def _check_no_commit_deletion_claim(output: ReelScriptOutput) -> None:
+    """
+    Generalizes the safety check beyond the secrets-specific case: ANY
+    claim that a commit "disappears"/is "deleted"/"gone" after reset is
+    imprecise — the commit object persists in the object database and is
+    reachable via reflog until garbage collected. Only the branch pointer
+    stops referencing it. Reviewers flagged this as dangerous teaching for
+    beginners even outside the sensitive-data context.
+    """
+    for field_name, text in _fact_bearing_fields(output).items():
+        for sentence in _split_sentences(text):
+            s = sentence.lower()
+            if "commit" not in s or _sentence_asserts_negation(s):
+                continue
+            claims_deletion = any(verb in s for verb in DESTRUCTIVE_CLAIM_VERBS) or "disappear" in s or "gone" in s
+            if claims_deletion and ("reset" in s or "rebase" in s):
+                raise QualityCheckError(
+                    f"{field_name} claims a commit is deleted/disappears/gone after reset or rebase. "
+                    f"Say the branch pointer stops referencing it instead — the commit object persists "
+                    f"in the object database and is recoverable via reflog until garbage collected."
+                )
+
+
 def _check_technical_safety(output: ReelScriptOutput) -> None:
     """
     Reject a specific dangerous pattern: claiming a history-rewriting
@@ -326,18 +361,7 @@ def _check_technical_safety(output: ReelScriptOutput) -> None:
     history rewrite. Recommending otherwise is dangerous advice, not
     just an imprecise simplification.
     """
-    te = output.technical_explanation
-    fields = {
-        "technical_explanation.level_2_developer": te.level_2_developer,
-        "technical_explanation.level_3_professional": te.level_3_professional,
-        "technical_explanation.internal_working": te.internal_working,
-        "real_project_example.solution": output.real_project_example.solution,
-        "interview.strong_answer": output.interview.strong_answer,
-    }
-    for i, entry in enumerate(output.concept_mistakes):
-        fields[f"concept_mistakes[{i}].professional_tip"] = entry.professional_tip
-
-    for field_name, text in fields.items():
+    for field_name, text in _fact_bearing_fields(output).items():
         text_lower = text.lower()
         mentions_sensitive_data = any(kw in text_lower for kw in SENSITIVE_DATA_KEYWORDS)
         mentions_destructive_command = any(kw in text_lower for kw in DESTRUCTIVE_COMMAND_KEYWORDS)
@@ -493,6 +517,8 @@ def _check_storyboard(output: ReelScriptOutput) -> None:
             )
         if len(shot.voice.strip()) < MIN_VOICE_LEN:
             raise QualityCheckError(f"visual_storyboard[{i}].voice is empty or too short.")
+        if len(shot.camera.strip()) < MIN_CAMERA_LEN:
+            raise QualityCheckError(f"visual_storyboard[{i}].camera is empty or too short.")
         if len(shot.on_screen_text.strip()) < MIN_ON_SCREEN_TEXT_LEN:
             raise QualityCheckError(f"visual_storyboard[{i}].on_screen_text is empty or too short.")
         if len(shot.learning_objective.strip()) < MIN_LEARNING_OBJECTIVE_LEN:

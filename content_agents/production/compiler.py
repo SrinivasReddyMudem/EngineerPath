@@ -8,10 +8,17 @@ Why deterministic and not another generation call: the internal fields
 by field (hook bans, analogy completeness, reset-mode fact-check, CTA
 reward pattern, safety caveats, etc.). Having a SEPARATE call freely
 rewrite them into "a voice script" would risk silently reintroducing an
-error that validation just caught, or drifting from the
-visual_storyboard's `voice` lines that sync_timeline depends on being
-accurate. Composing them with plain string templates keeps one single
-source of truth.
+error that validation just caught.
+
+voice_script is a straight concatenation of visual_storyboard[i].voice,
+in order — NOT independently re-composed from problem/analogy/technical
+fields. That used to be two different texts describing the same reel
+(the voice script and the sync timeline's per-shot voice lines could
+drift apart); making them the same text is the fix, not a stricter
+"do these match" check after the fact. The internal reasoning fields
+still exist and are still validated (fact-checking, analogy completeness,
+safety), they just aren't the source of the spoken narrative anymore —
+the storyboard shots are.
 """
 
 import re
@@ -32,14 +39,6 @@ INTENT_LABELS = {
 }
 
 
-_LEADING_ARTICLE_RE = re.compile(r"^(the|a|an)\s+", re.IGNORECASE)
-
-
-def _strip_article(text: str) -> str:
-    """Avoid 'the the exported final video' when the field itself already starts with an article."""
-    return _LEADING_ARTICLE_RE.sub("", text.strip())
-
-
 def _s(text: str) -> str:
     """Ensure a fragment ends with terminal punctuation before it's joined with the next one."""
     text = text.strip()
@@ -49,45 +48,7 @@ def _s(text: str) -> str:
 
 
 def _compose_voice_script(script: ReelScriptOutput) -> str:
-    parts = [_s(script.hook)]
-
-    p = script.problem
-    parts.append(" ".join(_s(x) for x in [p.real_world_problem, p.developer_pain, p.why_it_matters]))
-
-    if script.comparison is not None:
-        c = script.comparison
-        parts.append(_s(c.why_confused))
-        parts.append(_s(f"{c.concept_a} is {c.concept_a_definition}"))
-        parts.append(_s(f"{c.concept_b} is {c.concept_b_definition}"))
-        row_by_dim = {row.dimension: row for row in c.comparison_rows}
-        for dim in ["When To Use", "When Not To Use", "Professional Recommendation"]:
-            row = row_by_dim.get(dim)
-            if row:
-                parts.append(_s(f"For {dim.lower()}, {c.concept_a} is for {row.concept_a_value}"))
-                parts.append(_s(f"{c.concept_b} is for {row.concept_b_value}"))
-        parts.append(_s(f"Here's the decision rule: {c.decision_rule}"))
-    else:
-        a = script.analogy
-        parts.append(_s(f"Think of it like this: {a.analogy}"))
-        # One short sentence per mapping pair — introduce concepts one at a
-        # time instead of cramming HEAD + index + working dir into one
-        # sentence, which reads robotically when spoken aloud.
-        for m in a.mapping:
-            parts.append(_s(f"The {_strip_article(m.real_world).lower()} is your {_strip_article(m.technical).lower()}"))
-
-        te = script.technical_explanation
-        parts.append(_s(te.level_1_beginner))
-        parts.append(_s(te.level_3_professional))
-
-        ex = script.real_project_example
-        parts.append(" ".join(_s(x) for x in [ex.scenario, ex.solution, ex.professional_reasoning]))
-
-        if script.concept_mistakes:
-            parts.append(_s(script.concept_mistakes[0].professional_tip))
-
-    parts.append(_s(script.memory_anchor))
-    parts.append(_s(script.engagement_cta))
-    return " ".join(p.strip() for p in parts if p and p.strip())
+    return " ".join(_s(shot.voice) for shot in script.visual_storyboard if shot.voice.strip())
 
 
 def _parse_unresolved_issues(raw_issues: list[str]) -> list[str]:
@@ -133,7 +94,7 @@ def compile_production_package(
     visual_script = [
         VisualScene(
             scene_number=i + 1, time_range=shot.time_range, visual=shot.visual,
-            animation=shot.animation, on_screen_text=shot.on_screen_text,
+            animation=shot.animation, camera=shot.camera, on_screen_text=shot.on_screen_text,
             purpose=shot.learning_objective,
         )
         for i, shot in enumerate(script.visual_storyboard)
@@ -166,7 +127,7 @@ def compile_production_package(
         visual_generation_readiness, hook_quality, analogy_quality,
     ]
     all_pass = all(v == "PASS" for v in checked_fields) and retention == "PASS"
-    overall = "READY" if (all_pass and not notes) else "NEEDS_IMPROVEMENT"
+    overall = "READY" if (all_pass and not notes) else "NOT_READY"
 
     quality_report = QualityReport(
         technical_correctness=technical_correctness, command_safety=command_safety,

@@ -73,10 +73,17 @@ class InterviewQA(BaseModel):
 
 
 class StoryboardShot(BaseModel):
+    """
+    These shots ARE the reel, in order — voice_script is compiled by
+    concatenating every shot's `voice` line (see production/compiler.py).
+    There is no separate free-standing narration: one idea per shot,
+    written in the order it should be heard, is the whole script.
+    """
     time_range: str = Field(description="e.g. '0-5s'")
     visual: str = Field(description="WHO is on screen, WHERE, WHAT ACTION — e.g. 'A developer at a laptop; terminal shows commits A-B-C; C is highlighted red', never 'show logo'")
     animation: str = Field(description="The specific motion, e.g. 'HEAD pointer slides backward from C to B'")
-    voice: str = Field(description="The voiceover line spoken during this shot — must match the visual's meaning")
+    camera: str = Field(description="How the viewer sees it, e.g. 'Zoom into the commit history' or 'Static wide shot'")
+    voice: str = Field(description="ONE self-contained spoken idea for this shot — never combine multiple facts (e.g. HEAD move + index change + working dir change) in one line")
     on_screen_text: str = Field(description="Text overlay for this shot")
     learning_objective: str = Field(description="What this shot is meant to teach")
 

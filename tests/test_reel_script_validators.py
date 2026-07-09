@@ -72,10 +72,12 @@ def _valid_output(**overrides) -> ReelScriptOutput:
         memory_anchor="Reset moves your position. Revert makes a correction instead.",
         engagement_cta="Comment RESET and I'll send you the full Git reset cheat sheet.",
         visual_storyboard=[
-            StoryboardShot(time_range="0-5s", visual="A developer at a laptop; terminal shows a commit timeline A-B-C-D on screen", animation="The HEAD pointer slides backward from D to C", voice="Reset doesn't delete your code", on_screen_text="Reset doesn't delete your code", learning_objective="Create mental model"),
-            StoryboardShot(time_range="5-20s", visual="A split-screen terminal window showing three separate reset modes running side by side", animation="Index and working directory panels highlight differently per mode", voice="Soft, mixed, and hard each change something different", on_screen_text="Soft, mixed, hard", learning_objective="Show the distinction"),
-            StoryboardShot(time_range="20-40s", visual="A code review screen with a messy commit list next to a cleaned-up version", animation="Commits visually reorganize and merge into clean single entries", voice="Professionals clean commits before review", on_screen_text="Clean commits, easier review", learning_objective="Ground in real workflow"),
-            StoryboardShot(time_range="40-60s", visual="A large text overlay of the CTA centered on a dark terminal-style background", animation="The CTA text pulses once and then holds steady", voice="Comment RESET for the cheat sheet", on_screen_text="Comment RESET", learning_objective="Drive engagement"),
+            StoryboardShot(time_range="0-5s", visual="A developer at a laptop looking confused at a messy commit they just made", animation="The developer leans toward the screen, squinting at the terminal", camera="Close-up on the developer's face then whip to the screen", voice="You just made a commit and realize it's wrong.", on_screen_text="Wrong commit?", learning_objective="Create the problem"),
+            StoryboardShot(time_range="5-15s", visual="A developer at a laptop; terminal shows a commit timeline A-B-C-D on screen", animation="The HEAD pointer slides backward from D to C", camera="Zoom into the commit history", voice="Reset moves your branch pointer to a different commit.", on_screen_text="HEAD moves back", learning_objective="Introduce the mental model"),
+            StoryboardShot(time_range="15-25s", visual="A split-screen terminal window showing the index panel highlighting separately from the working directory panel", animation="Only the index panel highlights while the working directory panel stays dim", camera="Static split-screen shot", voice="Mixed reset also resets the index, but leaves your files untouched.", on_screen_text="Index resets, files stay", learning_objective="Show one distinct fact"),
+            StoryboardShot(time_range="25-35s", visual="The same split-screen terminal now showing both index and working directory panels highlighting together", animation="Both panels highlight together and files visibly change", camera="Static split-screen shot", voice="Hard reset resets the index and your working files together.", on_screen_text="Hard resets everything", learning_objective="Show the contrasting fact"),
+            StoryboardShot(time_range="35-50s", visual="A code review screen with a messy commit list next to a cleaned-up version", animation="Commits visually reorganize and merge into clean single entries", camera="Slow pan across the before-and-after commit lists", voice="Professionals clean commits before review, so reviewers see clear intent.", on_screen_text="Clean commits, easier review", learning_objective="Ground in real workflow"),
+            StoryboardShot(time_range="50-60s", visual="A large text overlay of the memory anchor and CTA centered on a dark terminal-style background", animation="The CTA text pulses once and then holds steady", camera="Static centered shot", voice="Comment RESET for the cheat sheet.", on_screen_text="Comment RESET", learning_objective="Drive engagement"),
         ],
         quality_score=QualityScore(
             technical_accuracy=9, teaching_quality=8, hook_strength=8,
@@ -198,7 +200,7 @@ def test_follow_named_series_cta_passes():
 
 def test_too_few_storyboard_shots_fails():
     out = _valid_output(visual_storyboard=[
-        StoryboardShot(time_range="0-60s", visual="One long shot of everything", animation="Nothing much changes here", voice="This is the whole video", on_screen_text="Everything", learning_objective="Cover it all"),
+        StoryboardShot(time_range="0-60s", visual="One long shot of everything happening on screen at once", animation="Nothing much changes here at all", camera="Static wide shot", voice="This is the whole video", on_screen_text="Everything", learning_objective="Cover it all"),
     ])
     with pytest.raises(QualityCheckError):
         validators.validate(out)
@@ -337,5 +339,39 @@ def test_too_many_concept_mistakes_fails():
         MistakeEntry(level="professional", wrong_belief="Yet another wrong belief here too.", correct_understanding="Yet another correct understanding here too.", professional_tip="Yet another professional tip here too."),
         MistakeEntry(level="interview", wrong_belief="One more wrong belief for good measure.", correct_understanding="One more correct understanding for good measure.", professional_tip="One more professional tip for good measure."),
     ])
+    with pytest.raises(QualityCheckError):
+        validators.validate(out)
+
+
+def test_commit_disappears_claim_fails():
+    """Regression: reviewer flagged 'commit disappears' as dangerous teaching — the object persists until GC."""
+    out = _valid_output(technical_explanation=TechnicalExplanation(
+        level_1_beginner="When you run reset --hard, the commit disappears completely from your project.",
+        level_2_developer="Reset moves the branch pointer and, depending on mode, may also reset the index.",
+        level_3_professional="Teams choose --soft to reorganize commits, --mixed to unstage, and --hard only when discarding local work entirely.",
+        internal_working="Soft moves only HEAD; mixed also resets the index while leaving the working directory alone; hard resets HEAD, index, and working directory together.",
+    ))
+    with pytest.raises(QualityCheckError, match="commit is deleted"):
+        validators.validate(out)
+
+
+def test_commit_pointer_stops_referencing_claim_passes():
+    out = _valid_output(technical_explanation=TechnicalExplanation(
+        level_1_beginner="When you run reset --hard, the branch pointer stops referencing that commit.",
+        level_2_developer="Reset moves the branch pointer and, depending on mode, may also reset the index.",
+        level_3_professional="Teams choose --soft to reorganize commits, --mixed to unstage, and --hard only when discarding local work entirely.",
+        internal_working="Soft moves only HEAD; mixed also resets the index while leaving the working directory alone; hard resets HEAD, index, and working directory together.",
+    ))
+    validators.validate(out)
+
+
+def test_missing_camera_field_fails():
+    shots = list(_valid_output().visual_storyboard)
+    shots[0] = StoryboardShot(
+        time_range=shots[0].time_range, visual=shots[0].visual, animation=shots[0].animation,
+        camera="", voice=shots[0].voice, on_screen_text=shots[0].on_screen_text,
+        learning_objective=shots[0].learning_objective,
+    )
+    out = _valid_output(visual_storyboard=shots)
     with pytest.raises(QualityCheckError):
         validators.validate(out)
