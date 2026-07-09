@@ -98,10 +98,17 @@ Chain: `schema.py` → `validators.py` (imports schema types) → `renderer.py` 
 
 | Agent | Folder | On router? | Validators status |
 |---|---|---|---|
-| reel-script | `content_agents/video/reel_script/` | Yes (`purpose="reel"`) | Full quality gates + deterministic fact-checking (hook/analogy/problem/technical/example/mistakes/interview/CTA/storyboard/quality-score gates) |
-| cheat-sheet | `content_agents/cheatsheet/cheat_sheet/` | No — standalone | Full quality gates |
-| interview-prep | `content_agents/interview/interview_prep/` | No — standalone | Minimal (schema completeness only) — harden + port to router later |
-| quiz | `content_agents/quiz/quiz_agent/` | No — standalone | Minimal (structural only) — harden + port to router later |
+| reel-script | `content_agents/video/reel_script/` | Yes (`purpose="reel"`) | Full quality gates + deterministic fact-checking; `validate()` collects ALL failing checks per attempt, not just the first |
+| reel-critic | `content_agents/video/reel_critic/` | Auto-runs after `purpose="reel"` (see `router.PURPOSE_TO_CRITIC`) | Independent audience-psychology/educational-experience critic — takes the rendered reel script as input, not topic-grounded (no KnowledgeExtract) |
+| cheat-sheet | `content_agents/cheatsheet/cheat_sheet/` | Yes (`purpose="cheatsheet"`) | Full quality gates |
+| interview-prep | `content_agents/interview/interview_prep/` | Yes (`purpose="interview"`) | Minimal (schema completeness only) — harden after live testing |
+| quiz | `content_agents/quiz/quiz_agent/` | Yes (`purpose="quiz"`) | Minimal (structural only) — harden after live testing |
+
+### Best-effort fallback (all agents, `core/base_agent.py`)
+If the final retry attempt still fails a `QualityCheckError`, `run()` returns the parsed content anyway (it already passed strict schema validation) instead of `AgentError`, logging the unresolved issue. This trades "guaranteed quality" for "never a wasted wait with nothing to show" — check the agent's log file if you want to know whether a returned result had an unresolved gate.
+
+### Critique pipeline (`router.PURPOSE_TO_CRITIC`)
+Adding a critic for another purpose: register the critic agent in `core/registry.py` + `config/agents_enabled.json` like any other agent, then add one entry to `PURPOSE_TO_CRITIC` in `router.py`. The critic receives `render(agent_name, result)` (the rendered markdown) as its `user_message` — no other wiring needed. This **roughly doubles** latency/cost for that purpose; only add it where the user has explicitly asked for an always-on critique.
 
 ## Adding a new topic (e.g. `c`, `cpp`, `linux`)
 1. Create `skills/<topic>/SKILL.md` + `skills/<topic>/references/*.md` mirroring `skills/git/` — same 7 reference basenames (`concepts, internals, workflows, mistakes, analogies, interview, commands`), since `knowledge/extractor.py` expects those exact names.

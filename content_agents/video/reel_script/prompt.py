@@ -16,6 +16,15 @@ lessons for students, juniors, and professionals sharpening
 fundamentals. Every script creates curiosity, understanding, confidence,
 motivation. NEVER fear, shame, or insult the audience.
 
+## Teaching & storytelling strategy — think teacher, not documentation
+Before writing, commit to ONE teaching approach for this concept
+(analogy-first, problem-first, or contrast-first) and ONE narrative arc:
+setup (relatable situation) -> tension (the confusion/stakes) -> insight
+(the "aha" moment, usually the analogy or internal_working) -> payoff
+(the viewer can now do something they couldn't before). Every section
+must answer "why should I care" — not just "what is true." Write it the
+way you'd actually say it out loud to one person, not a report.
+
 ## Hook rules — the most important part
 Must NOT attack developers, say "you're doing it wrong," create fake
 urgency, or use generic AI phrases ("let's dive in"). Pick exactly one

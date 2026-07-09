@@ -11,18 +11,20 @@ if TYPE_CHECKING:
 def _get_registry() -> dict:
     from content_agents.cheatsheet.cheat_sheet import CheatSheetAgent
     from content_agents.video.reel_script import ReelScriptAgent
+    from content_agents.video.reel_critic import ReelCriticAgent
     from content_agents.interview.interview_prep import InterviewPrepAgent
     from content_agents.quiz.quiz_agent import QuizAgent
 
     return {
         "cheat-sheet": CheatSheetAgent,
         "reel-script": ReelScriptAgent,
+        "reel-critic": ReelCriticAgent,
         "interview-prep": InterviewPrepAgent,
         "quiz": QuizAgent,
     }
 
 
-AGENT_NAMES = ["cheat-sheet", "reel-script", "interview-prep", "quiz"]
+AGENT_NAMES = ["cheat-sheet", "reel-script", "reel-critic", "interview-prep", "quiz"]
 
 
 def get_agent(name: str) -> "BaseAgent":

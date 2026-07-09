@@ -115,8 +115,25 @@ def render_quiz(o) -> str:
     return "\n".join(lines)
 
 
+def render_reel_critic(o) -> str:
+    dims = [
+        "curiosity", "mental_model", "story_flow", "natural_language", "retention",
+        "shareability", "emotional_connection", "conversation_style",
+        "visual_explainability", "beginner_friendliness", "professional_relevance",
+    ]
+    lines = [f"# Audience Psychology Critique — {o.topic}\n", f"**Verdict: {o.overall_verdict.upper()}**\n"]
+    for name in dims:
+        d = getattr(o, name)
+        label = name.replace("_", " ").title()
+        lines.append(f"**{label}: {d.score}/10** — {d.critique}")
+        lines.append(f"  _Fix: {d.improvement_suggestion}_\n")
+    lines.append(f"**Top priority fix:** {o.top_priority_fix}")
+    return "\n".join(lines)
+
+
 _RENDERERS = {
     "reel-script": render_reel_script,
+    "reel-critic": render_reel_critic,
     "cheat-sheet": render_cheat_sheet,
     "interview-prep": render_interview_prep,
     "quiz": render_quiz,

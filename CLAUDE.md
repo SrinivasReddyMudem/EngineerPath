@@ -21,8 +21,17 @@ Requested Output Generator  e.g. content_agents/video/reel_script/
      v
 Quality Validators
      v
+[purpose-specific critique, e.g. reel-critic]  (router.PURPOSE_TO_CRITIC)
+     v
 Final Output
 ```
+
+Purposes can have an independent critic agent auto-run after generation
+(currently only `reel` -> `reel-critic`). This is a SEPARATE LLM call
+with its own critic persona — not more self-scored fields on the
+generator, because a model grading its own output is a weak signal.
+It roughly doubles latency/cost for that purpose; only wire up a critic
+where always-on critique was explicitly requested.
 
 This is a hard rule, not a convenience default: **the system never
 generates every content type by default.** `router.generate_content(topic,
