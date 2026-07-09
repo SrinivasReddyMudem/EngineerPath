@@ -5,7 +5,8 @@ Run with: streamlit run app.py
 All generation goes through the Intent/Output Router — pick ONE purpose
 and only that generator runs. No "generate everything" default. Purposes
 with a critic wired up (currently "reel") automatically get an
-independent audience-psychology critique pass too.
+independent audience-psychology critique pass too — it feeds the Quality
+Report's `retention` field but is never displayed; final output stays clean.
 """
 
 import streamlit as st
@@ -63,11 +64,8 @@ if run_clicked:
             result, critique = generate_content(topic, subject, purpose)
 
         _render_result(result_render_key(purpose), result)
-
-        # Internal QA detail, not part of the clean final output — its
-        # verdict/retention score already feeds the Quality Report above.
-        if critique is not None:
-            with st.expander("Internal QA: audience psychology critique (not part of final output)"):
-                _render_result(PURPOSE_TO_CRITIC[purpose], critique)
+        # `critique` is still computed and feeds the Quality Report's
+        # `retention` field above, but is never displayed — final output
+        # stays clean, per explicit request.
 else:
     st.info("Set a subject and purpose in the sidebar, then click Generate.")
