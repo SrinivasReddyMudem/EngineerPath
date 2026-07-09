@@ -5,7 +5,7 @@ from content_agents.core.base_agent import QualityCheckError
 from content_agents.video.reel_script.schema import (
     ReelScriptOutput, ProblemSetup, Analogy, AnalogyMapping, TechnicalExplanation,
     RealProjectExample, MistakeEntry, InterviewQA, StoryboardShot, QualityScore,
-    ComparisonStructure, ComparisonRow,
+    ComparisonStructure, ComparisonRow, ContentPlan,
 )
 from content_agents.video.reel_script import validators
 
@@ -13,6 +13,11 @@ from content_agents.video.reel_script import validators
 def _valid_output(**overrides) -> ReelScriptOutput:
     base = dict(
         topic="git",
+        content_plan=ContentPlan(
+            main_insight="Reset moves your position in history; the mode decides what else gets touched.",
+            content_boundary="Skip reflog recovery and object database internals — save those for another reel.",
+        ),
+        recommended_visual_style="Stick figure + animated terminal diagrams",
         hook="Git reset looks simple, but it changes your entire history in three different ways.",
         hook_type="curiosity_gap",
         problem=ProblemSetup(
@@ -64,12 +69,13 @@ def _valid_output(**overrides) -> ReelScriptOutput:
             weak_answer="Reset just undoes commits, without distinguishing what happens to staged or working directory changes.",
             follow_up_questions=["How would you recover if you ran reset --hard by mistake?"],
         ),
+        memory_anchor="Reset moves your position. Revert makes a correction instead.",
         engagement_cta="Comment RESET and I'll send you the full Git reset cheat sheet.",
         visual_storyboard=[
-            StoryboardShot(time_range="0-5s", visual="Git timeline A-B-C-D on screen", animation="HEAD pointer moves backward", voice="Reset doesn't delete your code", on_screen_text="Reset doesn't delete your code", learning_objective="Create mental model"),
-            StoryboardShot(time_range="5-20s", visual="Split view of three reset modes", animation="Index and working dir highlight differently per mode", voice="Soft, mixed, and hard each change something different", on_screen_text="Soft, mixed, hard", learning_objective="Show the distinction"),
-            StoryboardShot(time_range="20-40s", visual="Code review screen with messy commits", animation="Commits reorganizing into clean ones", voice="Professionals clean commits before review", on_screen_text="Clean commits, easier review", learning_objective="Ground in real workflow"),
-            StoryboardShot(time_range="40-60s", visual="Text overlay of CTA on dark background", animation="Text pulses once", voice="Comment RESET for the cheat sheet", on_screen_text="Comment RESET", learning_objective="Drive engagement"),
+            StoryboardShot(time_range="0-5s", visual="A developer at a laptop; terminal shows a commit timeline A-B-C-D on screen", animation="The HEAD pointer slides backward from D to C", voice="Reset doesn't delete your code", on_screen_text="Reset doesn't delete your code", learning_objective="Create mental model"),
+            StoryboardShot(time_range="5-20s", visual="A split-screen terminal window showing three separate reset modes running side by side", animation="Index and working directory panels highlight differently per mode", voice="Soft, mixed, and hard each change something different", on_screen_text="Soft, mixed, hard", learning_objective="Show the distinction"),
+            StoryboardShot(time_range="20-40s", visual="A code review screen with a messy commit list next to a cleaned-up version", animation="Commits visually reorganize and merge into clean single entries", voice="Professionals clean commits before review", on_screen_text="Clean commits, easier review", learning_objective="Ground in real workflow"),
+            StoryboardShot(time_range="40-60s", visual="A large text overlay of the CTA centered on a dark terminal-style background", animation="The CTA text pulses once and then holds steady", voice="Comment RESET for the cheat sheet", on_screen_text="Comment RESET", learning_objective="Drive engagement"),
         ],
         quality_score=QualityScore(
             technical_accuracy=9, teaching_quality=8, hook_strength=8,
@@ -279,5 +285,57 @@ def test_comparison_empty_value_fails():
     comp = _valid_comparison()
     comp.comparison_rows[0].concept_b_value = ""
     out = _valid_output(comparison=comp)
+    with pytest.raises(QualityCheckError):
+        validators.validate(out)
+
+
+def test_reset_hard_removes_secret_without_caveat_fails():
+    """The exact dangerous pattern flagged in manual review: reset --hard does NOT permanently erase data."""
+    out = _valid_output(real_project_example=RealProjectExample(
+        industry_context="software team",
+        scenario="A developer accidentally committed an API key to the repository and needs to clean it up before the team pulls.",
+        problem="The credential is now sitting in the commit history where anyone with repo access could see it.",
+        solution="Run git reset --hard to remove the commit that contains the sensitive data, then continue working.",
+        professional_reasoning="This keeps the team's history clean without the exposed credential visible in normal git log output.",
+    ))
+    with pytest.raises(QualityCheckError, match="removes/deletes sensitive data"):
+        validators.validate(out)
+
+
+def test_reset_hard_removes_secret_with_caveat_passes():
+    out = _valid_output(real_project_example=RealProjectExample(
+        industry_context="software team",
+        scenario="A developer accidentally committed an API key to the repository and needs to clean it up before the team pulls.",
+        problem="The credential is now sitting in the commit history where anyone with repo access could see it.",
+        solution="Reset only removes it from the visible branch tip — it can persist in reflog or the object database until garbage collected, so the key must be rotated regardless.",
+        professional_reasoning="Rotating the credential is the actual fix; history cleanup is secondary and doesn't guarantee removal.",
+    ))
+    validators.validate(out)
+
+
+def test_missing_content_plan_field_fails():
+    out = _valid_output(content_plan=ContentPlan(main_insight="Too short", content_boundary="Also short"))
+    with pytest.raises(QualityCheckError):
+        validators.validate(out)
+
+
+def test_too_short_memory_anchor_fails():
+    out = _valid_output(memory_anchor="Short.")
+    with pytest.raises(QualityCheckError):
+        validators.validate(out)
+
+
+def test_too_many_concept_mistakes_fails():
+    entry = MistakeEntry(
+        level="beginner", wrong_belief="Wrong belief about reset behavior here.",
+        correct_understanding="Correct understanding about reset behavior here.",
+        professional_tip="A professional tip about handling this situation.",
+    )
+    out = _valid_output(concept_mistakes=[
+        entry,
+        MistakeEntry(level="intermediate", wrong_belief="Another wrong belief entirely here.", correct_understanding="Another correct understanding entirely here.", professional_tip="Another professional tip entirely here."),
+        MistakeEntry(level="professional", wrong_belief="Yet another wrong belief here too.", correct_understanding="Yet another correct understanding here too.", professional_tip="Yet another professional tip here too."),
+        MistakeEntry(level="interview", wrong_belief="One more wrong belief for good measure.", correct_understanding="One more correct understanding for good measure.", professional_tip="One more professional tip for good measure."),
+    ])
     with pytest.raises(QualityCheckError):
         validators.validate(out)

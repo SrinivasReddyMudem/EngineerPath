@@ -85,12 +85,12 @@ Chain: `schema.py` → `validators.py` (imports schema types) → `renderer.py` 
 2. Run `python -m pytest tests/test_<agent>_validators.py -v`.
 
 ### When touching `reel_script/prompt.py` (knowledge-layer agent)
-1. Check prompt length stays under 25,000 chars:
+1. Check prompt length stays under 26,000 chars — raised from the default 25,000 because this schema now covers safety validation, content planning, and richer visual requirements; don't raise it further without a real reason:
    ```bash
    python -c "
    from content_agents.knowledge.extractor import extract
    from content_agents.video.reel_script.prompt import get_system_prompt
-   p = get_system_prompt(extract('git')); print(len(p)); assert len(p) < 25000"
+   p = get_system_prompt(extract('git')); print(len(p)); assert len(p) < 26000"
    ```
 2. Run `python -m pytest tests/ -q`.
 

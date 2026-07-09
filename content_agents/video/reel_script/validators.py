@@ -22,17 +22,22 @@ MIN_PROBLEM_FIELD_LEN = 15
 MIN_EXAMPLE_FIELD_LEN = 20
 MIN_INDUSTRY_CONTEXT_LEN = 8
 MIN_MISTAKE_ENTRIES = 2
+MAX_MISTAKE_ENTRIES = 3  # content boundary: one reel covers one transformation, not an exhaustive catalog
 MIN_MISTAKE_FIELD_LEN = 15
 MIN_INTERVIEW_FIELD_LEN = 15
 MIN_STRONG_ANSWER_LEN = 60  # loose proxy for "covers definition + mechanism + example" — a terse but accurate answer can be short
 MIN_STORYBOARD_SHOTS = 4
-MIN_VISUAL_LEN = 15
-MIN_ANIMATION_LEN = 10
+MIN_VISUAL_WORDS = 12  # WHO/WHERE/WHAT ACTION needs real sentence structure, not a 2-word label
+MIN_ANIMATION_WORDS = 6
 MIN_VOICE_LEN = 10
 MIN_ON_SCREEN_TEXT_LEN = 5
 MIN_LEARNING_OBJECTIVE_LEN = 8
 MIN_TECHNICAL_ACCURACY_SCORE = 9
 MIN_GATED_SCORE = 8
+MIN_MAIN_INSIGHT_LEN = 15
+MIN_CONTENT_BOUNDARY_LEN = 15
+MIN_VISUAL_STYLE_LEN = 8
+MIN_MEMORY_ANCHOR_LEN = 10
 
 BANNED_PREAMBLE_PHRASES = [
     "in this video",
@@ -115,6 +120,21 @@ FALLBACK_ANALOGY_HINT = (
     "area, the exported final video = the working directory."
 )
 
+# Safety-critical: history-rewriting commands (reset --hard, filter-repo, rebase)
+# do NOT permanently erase data — it can persist in reflog / the object database
+# until garbage collected, and a pushed secret must be rotated regardless of any
+# local history rewrite. Recommending these as a fix for exposed sensitive data
+# without that caveat is actively dangerous advice, not just imprecise.
+SENSITIVE_DATA_KEYWORDS = ["sensitive data", "secret", "password", "credential", "api key", "private key", "token"]
+DESTRUCTIVE_COMMAND_KEYWORDS = ["reset --hard", "reset hard", "filter-branch", "filter-repo", "rebase"]
+DESTRUCTIVE_CLAIM_VERBS = [
+    "remove", "removes", "removed", "removing",
+    "delete", "deletes", "deleted", "deleting",
+    "erase", "erases", "erased", "erasing",
+    "gets rid of", "get rid of", "eliminate", "eliminates", "wipe", "wipes",
+]
+SAFETY_CAVEAT_INDICATORS = ["reflog", "object database", "garbage collect", "rotate", "invalidate", "revoke", "already pushed", "already shared"]
+
 
 def validate(output: ReelScriptOutput) -> None:
     """
@@ -127,11 +147,11 @@ def validate(output: ReelScriptOutput) -> None:
     whichever check happened to run first.
     """
     checks = [
-        _check_no_preamble, _check_hook_not_fear_or_generic, _check_problem,
+        _check_content_plan, _check_no_preamble, _check_hook_not_fear_or_generic, _check_problem,
         _check_analogy, _check_analogy_completeness, _check_technical_explanation,
-        _check_reset_mode_accuracy, _check_real_project_example, _check_concept_mistakes,
-        _check_interview, _check_cta, _check_storyboard, _check_quality_score,
-        _check_comparison,
+        _check_reset_mode_accuracy, _check_technical_safety, _check_real_project_example,
+        _check_concept_mistakes, _check_interview, _check_cta, _check_memory_anchor,
+        _check_storyboard, _check_quality_score, _check_comparison,
     ]
     issues: list[str] = []
     for check in checks:
@@ -295,6 +315,60 @@ def _check_reset_mode_accuracy(output: ReelScriptOutput) -> None:
                 )
 
 
+def _check_technical_safety(output: ReelScriptOutput) -> None:
+    """
+    Reject a specific dangerous pattern: claiming a history-rewriting
+    command (reset --hard, filter-branch/-repo, rebase) "removes" or
+    "deletes" sensitive data (secrets, passwords, credentials, tokens)
+    without the safety caveat — it doesn't permanently erase anything
+    (reflog/object database can retain it until garbage collected), and
+    an already-pushed secret must be rotated regardless of any local
+    history rewrite. Recommending otherwise is dangerous advice, not
+    just an imprecise simplification.
+    """
+    te = output.technical_explanation
+    fields = {
+        "technical_explanation.level_2_developer": te.level_2_developer,
+        "technical_explanation.level_3_professional": te.level_3_professional,
+        "technical_explanation.internal_working": te.internal_working,
+        "real_project_example.solution": output.real_project_example.solution,
+        "interview.strong_answer": output.interview.strong_answer,
+    }
+    for i, entry in enumerate(output.concept_mistakes):
+        fields[f"concept_mistakes[{i}].professional_tip"] = entry.professional_tip
+
+    for field_name, text in fields.items():
+        text_lower = text.lower()
+        mentions_sensitive_data = any(kw in text_lower for kw in SENSITIVE_DATA_KEYWORDS)
+        mentions_destructive_command = any(kw in text_lower for kw in DESTRUCTIVE_COMMAND_KEYWORDS)
+        if not (mentions_sensitive_data and mentions_destructive_command):
+            continue
+        makes_destructive_claim = any(verb in text_lower for verb in DESTRUCTIVE_CLAIM_VERBS)
+        has_caveat = any(ind in text_lower for ind in SAFETY_CAVEAT_INDICATORS)
+        if makes_destructive_claim and not has_caveat:
+            raise QualityCheckError(
+                f"{field_name} claims a history-rewriting command removes/deletes sensitive data without "
+                f"the safety caveat. This command does not permanently erase anything — it can persist in "
+                f"reflog or the object database until garbage collected, and any exposed secret must be "
+                f"rotated/invalidated regardless. Add that caveat or don't frame it as data removal."
+            )
+
+
+def _check_content_plan(output: ReelScriptOutput) -> None:
+    cp = output.content_plan
+    if len(cp.main_insight.strip()) < MIN_MAIN_INSIGHT_LEN:
+        raise QualityCheckError("content_plan.main_insight is too short or missing.")
+    if len(cp.content_boundary.strip()) < MIN_CONTENT_BOUNDARY_LEN:
+        raise QualityCheckError("content_plan.content_boundary is too short or missing.")
+    if len(output.recommended_visual_style.strip()) < MIN_VISUAL_STYLE_LEN:
+        raise QualityCheckError("recommended_visual_style is too short or missing.")
+
+
+def _check_memory_anchor(output: ReelScriptOutput) -> None:
+    if len(output.memory_anchor.strip()) < MIN_MEMORY_ANCHOR_LEN:
+        raise QualityCheckError("memory_anchor is too short or missing.")
+
+
 def _check_real_project_example(output: ReelScriptOutput) -> None:
     ex = output.real_project_example
     if len(ex.industry_context.strip()) < MIN_INDUSTRY_CONTEXT_LEN:
@@ -325,6 +399,11 @@ def _check_concept_mistakes(output: ReelScriptOutput) -> None:
     entries = output.concept_mistakes
     if len(entries) < MIN_MISTAKE_ENTRIES:
         raise QualityCheckError(f"concept_mistakes has {len(entries)} entries, needs at least {MIN_MISTAKE_ENTRIES}.")
+    if len(entries) > MAX_MISTAKE_ENTRIES:
+        raise QualityCheckError(
+            f"concept_mistakes has {len(entries)} entries, more than {MAX_MISTAKE_ENTRIES}. One reel covers "
+            f"one transformation — trim to the most important mistakes, not an exhaustive catalog."
+        )
     if len({e.level for e in entries}) < 2:
         raise QualityCheckError("concept_mistakes entries must cover at least 2 distinct levels, not the same level repeated.")
     for i, entry in enumerate(entries):
@@ -399,10 +478,19 @@ def _check_storyboard(output: ReelScriptOutput) -> None:
             f"{MIN_STORYBOARD_SHOTS} to plausibly cover 60 seconds."
         )
     for i, shot in enumerate(output.visual_storyboard):
-        if len(shot.visual.strip()) < MIN_VISUAL_LEN:
-            raise QualityCheckError(f"visual_storyboard[{i}].visual is too vague/short — describe the concrete shot, not a generic label like 'show logo'.")
-        if len(shot.animation.strip()) < MIN_ANIMATION_LEN:
-            raise QualityCheckError(f"visual_storyboard[{i}].animation is too vague/short — describe what actually moves or changes.")
+        visual_words = len(shot.visual.strip().split())
+        if visual_words < MIN_VISUAL_WORDS:
+            raise QualityCheckError(
+                f"visual_storyboard[{i}].visual is only {visual_words} words — needs WHO is on screen, "
+                f"WHERE, and WHAT ACTION is happening (at least {MIN_VISUAL_WORDS} words), not a short label "
+                f"like 'Git Reset logo'."
+            )
+        animation_words = len(shot.animation.strip().split())
+        if animation_words < MIN_ANIMATION_WORDS:
+            raise QualityCheckError(
+                f"visual_storyboard[{i}].animation is only {animation_words} words — describe the specific "
+                f"motion (at least {MIN_ANIMATION_WORDS} words), not just naming what changes."
+            )
         if len(shot.voice.strip()) < MIN_VOICE_LEN:
             raise QualityCheckError(f"visual_storyboard[{i}].voice is empty or too short.")
         if len(shot.on_screen_text.strip()) < MIN_ON_SCREEN_TEXT_LEN:

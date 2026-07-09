@@ -1,19 +1,24 @@
 """
-Deterministic compiler: ReelScriptOutput (+ intent, + unresolved issues)
--> ProductionPackage. Pure Python, no LLM call — zero added latency.
+Deterministic compiler: ReelScriptOutput (+ intent, + unresolved issues,
++ optional critique) -> ProductionPackage. Pure Python, no LLM call —
+zero added latency.
 
 Why deterministic and not another generation call: the internal fields
 (hook, analogy, technical_explanation, ...) are already validated field
 by field (hook bans, analogy completeness, reset-mode fact-check, CTA
-reward pattern, etc.). Having a SEPARATE call freely rewrite them into
-"a voice script" would risk silently reintroducing an error that
-validation just caught, or drifting from the visual_storyboard's `voice`
-lines that sync_timeline depends on being accurate. Composing them with
-plain string templates keeps one single source of truth.
+reward pattern, safety caveats, etc.). Having a SEPARATE call freely
+rewrite them into "a voice script" would risk silently reintroducing an
+error that validation just caught, or drifting from the
+visual_storyboard's `voice` lines that sync_timeline depends on being
+accurate. Composing them with plain string templates keeps one single
+source of truth.
 """
 
 import re
+from content_agents.core.base_agent import AgentError
 from content_agents.video.reel_script.schema import ReelScriptOutput
+from content_agents.video.reel_script.validators import MIN_VISUAL_WORDS, MIN_ANIMATION_WORDS
+from content_agents.video.reel_critic.schema import ReelCritique
 from content_intent.schemas import IntentClassification
 from .schema import ProductionPackage, ReelMetadata, VisualScene, SyncEntry, QualityReport
 
@@ -52,23 +57,27 @@ def _compose_voice_script(script: ReelScriptOutput) -> str:
     if script.comparison is not None:
         c = script.comparison
         parts.append(_s(c.why_confused))
-        parts.append(f"{_s(c.concept_a + ' is ' + c.concept_a_definition)} {_s(c.concept_b + ' is ' + c.concept_b_definition)}")
+        parts.append(_s(f"{c.concept_a} is {c.concept_a_definition}"))
+        parts.append(_s(f"{c.concept_b} is {c.concept_b_definition}"))
         row_by_dim = {row.dimension: row for row in c.comparison_rows}
         for dim in ["When To Use", "When Not To Use", "Professional Recommendation"]:
             row = row_by_dim.get(dim)
             if row:
-                parts.append(f"For {dim.lower()}: {c.concept_a} — {_s(row.concept_a_value)} {c.concept_b} — {_s(row.concept_b_value)}")
-        parts.append(f"Here's the decision rule: {_s(c.decision_rule)}")
+                parts.append(_s(f"For {dim.lower()}, {c.concept_a} is for {row.concept_a_value}"))
+                parts.append(_s(f"{c.concept_b} is for {row.concept_b_value}"))
+        parts.append(_s(f"Here's the decision rule: {c.decision_rule}"))
     else:
         a = script.analogy
-        mapping_sentence = " and ".join(
-            f"the {_strip_article(m.real_world).lower()} is your {_strip_article(m.technical).lower()}"
-            for m in a.mapping
-        )
-        parts.append(f"Think of it like this: {_s(a.analogy)} {_s(mapping_sentence)}")
+        parts.append(_s(f"Think of it like this: {a.analogy}"))
+        # One short sentence per mapping pair — introduce concepts one at a
+        # time instead of cramming HEAD + index + working dir into one
+        # sentence, which reads robotically when spoken aloud.
+        for m in a.mapping:
+            parts.append(_s(f"The {_strip_article(m.real_world).lower()} is your {_strip_article(m.technical).lower()}"))
 
         te = script.technical_explanation
-        parts.append(f"{_s(te.level_1_beginner)} {_s(te.level_3_professional)}")
+        parts.append(_s(te.level_1_beginner))
+        parts.append(_s(te.level_3_professional))
 
         ex = script.real_project_example
         parts.append(" ".join(_s(x) for x in [ex.scenario, ex.solution, ex.professional_reasoning]))
@@ -76,6 +85,7 @@ def _compose_voice_script(script: ReelScriptOutput) -> str:
         if script.concept_mistakes:
             parts.append(_s(script.concept_mistakes[0].professional_tip))
 
+    parts.append(_s(script.memory_anchor))
     parts.append(_s(script.engagement_cta))
     return " ".join(p.strip() for p in parts if p and p.strip())
 
@@ -94,10 +104,16 @@ def _parse_unresolved_issues(raw_issues: list[str]) -> list[str]:
     return notes
 
 
+def _notes_mention(notes: list[str], *keywords: str) -> bool:
+    combined = " ".join(notes).lower()
+    return any(kw in combined for kw in keywords)
+
+
 def compile_production_package(
     script: ReelScriptOutput,
     intent: IntentClassification,
     unresolved_issues: list[str] | None = None,
+    critique: ReelCritique | AgentError | None = None,
 ) -> ProductionPackage:
     unresolved_issues = unresolved_issues or []
     notes = _parse_unresolved_issues(unresolved_issues)
@@ -108,7 +124,8 @@ def compile_production_package(
         audience=intent.audience_level,
         duration="60 seconds",
         learning_objective=intent.learning_goal,
-        core_message=script.problem.learning_goal,
+        core_message=script.content_plan.main_insight,
+        recommended_visual_style=script.recommended_visual_style,
     )
 
     voice_script = _compose_voice_script(script)
@@ -128,25 +145,34 @@ def compile_production_package(
     ]
 
     qs = script.quality_score
-    technical_accuracy: str = "PASS" if qs.technical_accuracy >= 9 else "FAIL"
-    teaching_quality: str = "PASS" if qs.teaching_quality >= 7 else "FAIL"
-    hook_quality: str = "PASS" if qs.hook_strength >= 8 else "FAIL"
-    analogy_quality: str = "PASS" if qs.analogy_quality >= 8 else "FAIL"
-    voice_ready: str = "PASS" if len(voice_script) > 100 else "FAIL"
-    video_generation_ready: str = "PASS" if all(
-        s.visual.strip() and s.animation.strip() and s.on_screen_text.strip() for s in visual_script
+    technical_correctness = "PASS" if qs.technical_accuracy >= 9 else "FAIL"
+    command_safety = "FAIL" if _notes_mention(notes, "sensitive data", "rotate", "reflog") else "PASS"
+    example_correctness = "FAIL" if _notes_mention(notes, "real_project_example") else "PASS"
+    beginner_clarity = "PASS" if qs.teaching_quality >= 7 else "FAIL"
+    hook_quality = "PASS" if qs.hook_strength >= 8 else "FAIL"
+    analogy_quality = "PASS" if qs.analogy_quality >= 8 else "FAIL"
+    visual_generation_readiness = "PASS" if all(
+        len(s.visual.split()) >= MIN_VISUAL_WORDS and len(s.animation.split()) >= MIN_ANIMATION_WORDS
+        and s.on_screen_text.strip() for s in visual_script
     ) else "FAIL"
 
-    all_pass = all(v == "PASS" for v in [
-        technical_accuracy, teaching_quality, hook_quality,
-        analogy_quality, voice_ready, video_generation_ready,
-    ])
-    overall: str = "READY" if (all_pass and not notes) else "NEEDS_IMPROVEMENT"
+    if isinstance(critique, ReelCritique):
+        retention = "PASS" if critique.retention.score >= 7 else "FAIL"
+    else:
+        retention = "NEEDS_IMPROVEMENT"  # no independent critique available — genuinely unknown, not assumed fine
+
+    checked_fields = [
+        technical_correctness, command_safety, example_correctness, beginner_clarity,
+        visual_generation_readiness, hook_quality, analogy_quality,
+    ]
+    all_pass = all(v == "PASS" for v in checked_fields) and retention == "PASS"
+    overall = "READY" if (all_pass and not notes) else "NEEDS_IMPROVEMENT"
 
     quality_report = QualityReport(
-        technical_accuracy=technical_accuracy, teaching_quality=teaching_quality,
+        technical_correctness=technical_correctness, command_safety=command_safety,
+        example_correctness=example_correctness, beginner_clarity=beginner_clarity,
+        retention=retention, visual_generation_readiness=visual_generation_readiness,
         hook_quality=hook_quality, analogy_quality=analogy_quality,
-        voice_ready=voice_ready, video_generation_ready=video_generation_ready,
         overall=overall, notes=notes,
     )
 

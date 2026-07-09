@@ -130,6 +130,6 @@ def generate_content(topic: str, subject: str, purpose: str):
 
     compiler = PURPOSE_TO_COMPILER.get(purpose)
     if compiler is not None and not isinstance(result, AgentError):
-        result = compiler(result, intent, unresolved_issues)
+        result = compiler(result, intent, unresolved_issues, critique)
 
     return result, critique

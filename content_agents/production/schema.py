@@ -11,7 +11,7 @@ an AI voice tool and an AI video tool respectively.
 from pydantic import BaseModel, Field
 from typing import Literal
 
-PassFail = Literal["PASS", "FAIL"]
+PassFail = Literal["PASS", "FAIL", "NEEDS_IMPROVEMENT"]
 Overall = Literal["READY", "NEEDS_IMPROVEMENT"]
 
 
@@ -22,6 +22,7 @@ class ReelMetadata(BaseModel):
     duration: str = Field(description="e.g. '60 seconds'")
     learning_objective: str
     core_message: str = Field(description="The one thing the viewer should remember")
+    recommended_visual_style: str = Field(description="e.g. 'Stick figure + animated diagrams' — one consistent style for the AI video tool")
 
 
 class VisualScene(BaseModel):
@@ -40,12 +41,14 @@ class SyncEntry(BaseModel):
 
 
 class QualityReport(BaseModel):
-    technical_accuracy: PassFail
-    teaching_quality: PassFail
+    technical_correctness: PassFail
+    command_safety: PassFail = Field(description="Whether any destructive-command claim about sensitive data was made without the reflog/rotate caveat")
+    example_correctness: PassFail
+    beginner_clarity: PassFail
+    retention: PassFail = Field(description="Derived from the independent critique's retention score, when available")
+    visual_generation_readiness: PassFail
     hook_quality: PassFail
     analogy_quality: PassFail
-    voice_ready: PassFail
-    video_generation_ready: PassFail
     overall: Overall
     notes: list[str] = Field(default_factory=list, description="Any unresolved issues from generation, if the best-effort fallback was used")
 

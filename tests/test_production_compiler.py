@@ -57,7 +57,7 @@ def test_compile_quality_report_reflects_low_scores():
         analogy_quality=8, real_world_relevance=9, interview_value=8, shareability=8,
     ))
     package = compile_production_package(script, _intent())
-    assert package.quality_report.technical_accuracy == "FAIL"  # 8 < 9 gate
+    assert package.quality_report.technical_correctness == "FAIL"  # 8 < 9 gate
     assert package.quality_report.overall == "NEEDS_IMPROVEMENT"
 
 

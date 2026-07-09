@@ -130,8 +130,9 @@ python -c "from content_agents.router import generate_content, PURPOSE_TO_AGENT;
   `prompt.py` then selects only the `KnowledgeExtract` fields its schema
   needs — this is how prompt tokens stay bounded as more reference files
   are added, not by re-reading `skills/` independently per generator.
-  Every agent's system prompt must stay under 25,000 chars — checked in
-  `DEPENDENCIES.md`.
+  Every agent's system prompt must stay under 25,000 chars (26,000 for
+  `reel-script` specifically, given its larger validated scope) — checked
+  in `DEPENDENCIES.md`.
 - `content_agents/core/` is a near-direct port of
   `automotive-lifecycle-agents/sdk_agents/core/` (Groq + strict
   `json_schema` + retry-on-failure-with-feedback). Don't redesign it

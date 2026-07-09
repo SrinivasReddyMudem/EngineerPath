@@ -22,22 +22,25 @@ contrast-first) and ONE arc: setup -> tension -> insight ("aha," usually
 the analogy) -> payoff (viewer can now do something new). Every section
 answers "why should I care." Write it the way you'd say it out loud.
 
+## Content plan — scope BEFORE writing
+main_insight: the ONE thing to remember (not a list). content_boundary:
+name what you're deliberately skipping, so the reel covers one
+transformation. Cap concept_mistakes at 2-3. recommended_visual_style:
+ONE consistent AI-video style (e.g. "Stick figure + animated diagrams").
+
 ## Hook rules — the most important part
 Must NOT attack developers, say "you're doing it wrong," create fake
-urgency, or use generic AI phrases ("let's dive in"). Pick exactly one
-hook_type:
-- curiosity_gap: creates an unanswered question, e.g. "X looks simple
-  but changes your entire history."
-- real_developer_situation: relatable scenario, e.g. "You pushed code
-  and realize your commit is wrong. What do you do?"
+urgency, or use generic AI phrases ("let's dive in"). Must create one of:
+a specific developer situation, a curiosity gap, a consequence, or a
+decision point — a bare fact is not a hook. Pick exactly one hook_type:
+- curiosity_gap: "X looks simple but changes your entire history."
+- real_developer_situation: "You pushed a commit with the wrong file.
+  Do you delete it or save the history?" (a real choice, not just Q&A)
 - interview_value: "This appears in interviews, but many answer wrong."
-- mistake_correction: "Knowing the command is easy. Knowing when to use
-  it is the real skill."
+- mistake_correction: "Knowing the command is easy; knowing when is the skill."
 - transformation: "After 60 seconds, this will finally make sense."
-- contrarian: challenge an assumption, e.g. "X is not what you think
-  it is."
-- story: brief personal framing, e.g. "Early on I memorized commands;
-  later I learned the real mental model."
+- contrarian: "X is not what you think it is."
+- story: "Early on I memorized commands; later I learned the mental model."
 - challenge: "Can you answer this before the explanation?"
 - authority: "Here's how professionals actually think about this."
 - community: "Building better engineers, one concept at a time."
@@ -50,13 +53,12 @@ concrete. Never "this topic is difficult." Pull real confusion from
 references/mistakes.md, minus the fear framing.
 
 ## Analogy rules
-One scenario (references/analogies.md) + at least 2 explicit mapping
-pairs (real_world -> technical) + limitations (where it breaks down —
-required, so it can never quietly create a misconception). Mapping MUST
-cover every structural component technical_explanation discusses — if
-you explain HEAD, index, AND working directory, a bookmark (HEAD only)
-is incomplete. Use an analogy with enough surface area (e.g. a
-video-editing timeline: position/saved edits/preview/export).
+One scenario (references/analogies.md) + at least 2 mapping pairs
+(real_world -> technical) + limitations (where it breaks down —
+required). Mapping MUST cover every structural component
+technical_explanation discusses — HEAD+index+working dir needs an
+analogy with that much surface area (e.g. video-editing timeline:
+position/preview/export), not a bookmark (HEAD only).
 
 ## Technical explanation rules — 4 distinct angles, exact facts
 level_1 = WHAT (beginner). level_2 = HOW (developer). level_3 = WHY and
@@ -66,36 +68,39 @@ exact not approximated. Reset modes specifically (common error point):
 untouched. `--hard` = HEAD + index + working dir. Never say --mixed
 touches the working dir, or --soft touches the index.
 
+## Safety rule — non-negotiable
+Never say reset --hard/rebase/filter-branch "removes"/"deletes" a
+secret or credential — it can persist in reflog/the object database
+until garbage collected. Exposed secrets must be rotated regardless.
+
 ## Real project example rules
-industry_context (e.g. "software team", "embedded project", "cloud
-system") + scenario + problem + solution + professional_reasoning.
-Ground in references/workflows.md, connect to teamwork/code review/
-production — not "developer forgot a file." Use messy commits before a
-PR, a review comment, or history cleanup before sharing a branch.
+industry_context (e.g. "software team") + scenario + problem + solution
++ professional_reasoning. Ground in references/workflows.md, connect to
+teamwork/code review/production — not "developer forgot a file." Use
+messy commits before a PR or history cleanup before sharing a branch.
 
 ## Concept mistakes rules
-At least 2 entries across distinct levels (beginner/intermediate/
-professional/interview), each with wrong_belief, correct_understanding,
-professional_tip. Ground in references/mistakes.md, strip shaming tone.
+2-3 entries, distinct levels (beginner/intermediate/professional/
+interview), each with wrong_belief, correct_understanding,
+professional_tip. Ground in references/mistakes.md, no shaming tone.
 
 ## Interview rules
-question, why_interviewer_asks, strong_answer (must cover definition +
-internal mechanism + practical example), weak_answer, at least 1
-follow_up_question. Ground in references/interview.md.
+question, why_interviewer_asks, strong_answer (definition + mechanism +
+example), weak_answer, 1+ follow_up_question. Ground in references/interview.md.
 
-## CTA rules
-One of: comment-for-a-specific-reward ("Comment X and I'll send the
-cheat sheet"), tag a friend, save-this-for-later, or follow-a-named-
-series ("Follow the daily Git series"). Banned, will be rejected:
-"Comment if you've struggled with this," "Comment your Git reset
-struggles," or any comment-ask with no named reward — reward must be
-concrete (a cheat sheet, a guide, a follow-up video topic).
+## Memory anchor + CTA rules
+memory_anchor: one short, quotable recap spoken right before the CTA
+(e.g. "Reset moves your position. Revert makes a correction."). Then
+the CTA — one of: comment-for-a-specific-reward ("Comment X and I'll
+send the cheat sheet"), tag a friend, save-this-for-later, or follow-a-
+named-series. Banned: any comment-ask with no named reward.
 
-## Storyboard rules
-No generic visuals ("show logo"). Every scene needs time_range, a
-specific visual (e.g. "branch pointer moving from commit A to commit
-B"), animation (what moves), voice (voiceover line), on_screen_text,
-and learning_objective. At least 4 scenes covering the full 60 seconds.
+## Storyboard rules — WHO/WHERE/WHAT ACTION, every scene
+No generic visuals ("show logo"). `visual` states WHO's on screen, WHERE,
+WHAT ACTION — e.g. "A developer at a laptop; terminal shows commits
+A-B-C, C highlighted red." `animation` names the specific motion (e.g.
+"HEAD slides backward from C to B"). `voice` must match what `visual`
+shows. At least 4 scenes, full 60s.
 
 ## Comparison rule
 If the subject is a comparison ("X vs Y") only, populate `comparison`:

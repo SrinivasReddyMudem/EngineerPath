@@ -30,6 +30,7 @@ def main():
     parser.add_argument("--subject", required=True, help="e.g. 'Git Reset' — the specific thing to generate content about")
     parser.add_argument("--purpose", default="reel", choices=sorted(PURPOSE_TO_AGENT.keys()), help="which single output type to generate (default: reel)")
     parser.add_argument("--topic", default="git", help="skill folder to ground generation in, e.g. 'git'")
+    parser.add_argument("--show-critique", action="store_true", help="also print the internal audience-psychology critique (saved to file either way, but not part of the clean final output by default)")
     args = parser.parse_args()
 
     render_key = result_render_key(args.purpose)
@@ -44,11 +45,15 @@ def main():
     (out_dir / f"{render_key}.md").write_text(text, encoding="utf-8")
 
     if critique is not None:
+        # Saved quietly either way (useful review trail), but not part of the
+        # clean final output unless explicitly asked for — its verdict/score
+        # already feeds the Quality Report's `retention` field.
         critic_name = PURPOSE_TO_CRITIC[args.purpose]
         critique_text = render(critic_name, critique)
-        print("\n" + "=" * 60 + "\n")
-        print(critique_text)
         (out_dir / f"{critic_name}.md").write_text(critique_text, encoding="utf-8")
+        if args.show_critique:
+            print("\n" + "=" * 60 + "\n")
+            print(critique_text)
 
     print(f"\nSaved to {out_dir}")
 

@@ -53,6 +53,7 @@ def render_reel_script(o) -> str:
         f"- Strong answer: {qa.strong_answer}",
         f"- Weak answer: {qa.weak_answer}",
         "- Follow-ups: " + "; ".join(qa.follow_up_questions) + "\n",
+        f"**Memory anchor:** {o.memory_anchor}",
         f"**CTA:** {o.engagement_cta}\n",
         "**Storyboard:**",
     ]
@@ -124,7 +125,8 @@ def render_production_package(o) -> str:
         f"**Audience:** {m.audience}",
         f"**Duration:** {m.duration}",
         f"**Learning Objective:** {m.learning_objective}",
-        f"**Core Message:** {m.core_message}\n",
+        f"**Core Message:** {m.core_message}",
+        f"**Recommended Visual Style:** {m.recommended_visual_style}\n",
         "# SECTION 2: VOICE SCRIPT\n",
         o.voice_script,
         "\n# SECTION 3: VISUAL GENERATION SCRIPT\n",
@@ -143,12 +145,14 @@ def render_production_package(o) -> str:
     q = o.quality_report
     lines += [
         "# SECTION 5: QUALITY REPORT\n",
-        f"- Technical Accuracy: {q.technical_accuracy}",
-        f"- Teaching Quality: {q.teaching_quality}",
+        f"- Technical Correctness: {q.technical_correctness}",
+        f"- Command Safety: {q.command_safety}",
+        f"- Example Correctness: {q.example_correctness}",
+        f"- Beginner Clarity: {q.beginner_clarity}",
+        f"- Retention: {q.retention}",
+        f"- Visual Generation Readiness: {q.visual_generation_readiness}",
         f"- Hook Quality: {q.hook_quality}",
         f"- Analogy Quality: {q.analogy_quality}",
-        f"- Voice Ready: {q.voice_ready}",
-        f"- Video Generation Ready: {q.video_generation_ready}",
         f"- **Overall: {q.overall}**",
     ]
     if q.notes:

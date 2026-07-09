@@ -74,11 +74,16 @@ class InterviewQA(BaseModel):
 
 class StoryboardShot(BaseModel):
     time_range: str = Field(description="e.g. '0-5s'")
-    visual: str = Field(description="What's on screen — specific, e.g. 'branch pointer moving from commit A to commit B', never 'show logo'")
-    animation: str = Field(description="What moves/changes during this shot")
-    voice: str = Field(description="The voiceover line spoken during this shot")
+    visual: str = Field(description="WHO is on screen, WHERE, WHAT ACTION — e.g. 'A developer at a laptop; terminal shows commits A-B-C; C is highlighted red', never 'show logo'")
+    animation: str = Field(description="The specific motion, e.g. 'HEAD pointer slides backward from C to B'")
+    voice: str = Field(description="The voiceover line spoken during this shot — must match the visual's meaning")
     on_screen_text: str = Field(description="Text overlay for this shot")
     learning_objective: str = Field(description="What this shot is meant to teach")
+
+
+class ContentPlan(BaseModel):
+    main_insight: str = Field(description="The ONE thing the viewer should remember — not a list")
+    content_boundary: str = Field(description="What this reel deliberately does NOT cover, to stay focused on one transformation")
 
 
 COMPARISON_DIMENSIONS = ["Purpose", "Main Action", "History Impact", "When To Use", "When Not To Use", "Professional Recommendation"]
@@ -115,6 +120,8 @@ class ReelScriptOutput(BaseModel):
     model_config = {"extra": "ignore"}
 
     topic: str
+    content_plan: ContentPlan
+    recommended_visual_style: str = Field(description="e.g. 'Stick figure + animated diagrams' — one consistent style for the AI video tool")
     hook: str = Field(description="Opening line using exactly one non-fear-based pattern from hook_type")
     hook_type: HookType
     problem: ProblemSetup
@@ -124,6 +131,7 @@ class ReelScriptOutput(BaseModel):
     concept_mistakes: list[MistakeEntry] = Field(description="At least 2 entries with distinct levels (beginner/intermediate/professional/interview)")
     interview: InterviewQA
     comparison: ComparisonStructure | None = Field(default=None, description="Populate ONLY for a comparison query (e.g. 'X vs Y'); otherwise null")
+    memory_anchor: str = Field(description="One short, quotable recap sentence — spoken right before the CTA")
     engagement_cta: str = Field(description="Value-offering CTA — comment-for-reward, tag a friend, save-this, or follow-a-named-series — never a bare 'follow for more'")
     visual_storyboard: list[StoryboardShot] = Field(description="At least 4 shots covering the full 60 seconds")
     quality_score: QualityScore = Field(description="Honest self-scored quality check — regenerate the specific section if a gated score is too low, don't just lower the number")

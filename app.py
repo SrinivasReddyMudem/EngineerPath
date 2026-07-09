@@ -64,8 +64,10 @@ if run_clicked:
 
         _render_result(result_render_key(purpose), result)
 
+        # Internal QA detail, not part of the clean final output — its
+        # verdict/retention score already feeds the Quality Report above.
         if critique is not None:
-            st.divider()
-            _render_result(PURPOSE_TO_CRITIC[purpose], critique)
+            with st.expander("Internal QA: audience psychology critique (not part of final output)"):
+                _render_result(PURPOSE_TO_CRITIC[purpose], critique)
 else:
     st.info("Set a subject and purpose in the sidebar, then click Generate.")
