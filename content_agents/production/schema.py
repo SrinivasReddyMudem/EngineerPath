@@ -46,7 +46,7 @@ class QualityReport(BaseModel):
     command_safety: PassFail = Field(description="Whether any destructive-command claim about sensitive data was made without the reflog/rotate caveat")
     example_correctness: PassFail
     beginner_clarity: PassFail
-    retention: PassFail = Field(description="Derived from the independent critique's retention score, when available")
+    retention: PassFail = Field(description="From the independent critique's retention score if that agent is enabled, otherwise from the internal self-rated shareability score")
     visual_generation_readiness: PassFail
     hook_quality: PassFail
     analogy_quality: PassFail

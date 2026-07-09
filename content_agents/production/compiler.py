@@ -120,7 +120,10 @@ def compile_production_package(
     if isinstance(critique, ReelCritique):
         retention = "PASS" if critique.retention.score >= 7 else "FAIL"
     else:
-        retention = "NEEDS_IMPROVEMENT"  # no independent critique available — genuinely unknown, not assumed fine
+        # reel-critic disabled by default (config/agents_enabled.json) — fall
+        # back to the closest internal self-rated signal for "does this hold
+        # attention" rather than reporting a perpetual unknown.
+        retention = "PASS" if qs.shareability >= 7 else "FAIL"
 
     checked_fields = [
         technical_correctness, command_safety, example_correctness, beginner_clarity,

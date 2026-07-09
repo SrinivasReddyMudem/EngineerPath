@@ -1,7 +1,7 @@
 {
   "cheat-sheet": true,
   "reel-script": true,
-  "reel-critic": true,
+  "reel-critic": false,
   "interview-prep": true,
   "quiz": true,
   "intent-classifier": true

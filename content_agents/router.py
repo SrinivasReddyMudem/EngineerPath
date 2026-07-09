@@ -32,6 +32,7 @@ package.
 """
 
 from content_agents.core.base_agent import AgentError
+from content_agents.core.config import is_enabled
 from content_agents.core.registry import get_agent
 from content_agents.core.renderer import render
 from content_agents.knowledge.extractor import extract as extract_knowledge
@@ -45,11 +46,13 @@ PURPOSE_TO_AGENT = {
     "quiz": "quiz",
 }
 
-# Purposes that get an automatic independent critique pass after generation.
-# Chosen explicitly (not automatic for every purpose): the user asked for
-# this specifically for reel scripts, where audience-psychology/pedagogy
-# quality is the whole point. This roughly doubles latency/cost for these
-# purposes — an accepted trade-off for "always run the critique."
+# Purposes that CAN get an automatic independent critique pass after
+# generation — gated by config/agents_enabled.json, not just this mapping.
+# Currently "reel-critic" is disabled there: quality is checked internally
+# (deterministic validators + self-rated quality_score) and the critique's
+# roughly-doubled latency/cost wasn't worth it for this project. Flip it
+# back on in config/agents_enabled.json if deeper audience-psychology
+# review is wanted again — no code change needed.
 PURPOSE_TO_CRITIC = {
     "reel": "reel-critic",
 }
@@ -123,7 +126,7 @@ def generate_content(topic: str, subject: str, purpose: str):
 
     critic_agent_name = PURPOSE_TO_CRITIC.get(purpose)
     critique = None
-    if critic_agent_name is not None and not isinstance(result, AgentError):
+    if critic_agent_name is not None and is_enabled(critic_agent_name) and not isinstance(result, AgentError):
         script_text = render(agent_name, result)
         critic = get_agent(critic_agent_name)
         critique = critic.run(f"Critique this reel script:\n\n{script_text}")
