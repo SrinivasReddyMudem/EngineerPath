@@ -109,7 +109,9 @@ example -> memory anchor + CTA, in that order. No generic visuals
 e.g. "A developer at a laptop; terminal shows commits A-B-C, C
 highlighted red." `animation` names the specific motion (e.g. "HEAD
 slides backward from C to B"). `camera` says how it's shot (e.g. "Zoom
-into the commit history" or "Static wide shot"). Full 60s.
+into the commit history" or "Static wide shot"). EVERY shot also needs
+`on_screen_text` (text overlay, e.g. "HEAD moves back") and
+`learning_objective` (what this shot teaches) — both required. Full 60s.
 
 ## Comparison rule
 If the subject is a comparison ("X vs Y") only, populate `comparison`:
