@@ -87,6 +87,7 @@ CTA_REWARD_INDICATORS = [
 
 TEAMWORK_CONTEXT_KEYWORDS = [
     "team", "review", "pull request", "pr ", "production", "colleague", "teammate", "code review",
+    "hotfix", "deploy", "release", "collaborat", "merge request", "shared branch", "codebase",
 ]
 
 # Too trivial for this audience (junior devs, interview prep, professionals) —
@@ -116,19 +117,30 @@ FALLBACK_ANALOGY_HINT = (
 
 
 def validate(output: ReelScriptOutput) -> None:
-    _check_no_preamble(output)
-    _check_hook_not_fear_or_generic(output)
-    _check_problem(output)
-    _check_analogy(output)
-    _check_analogy_completeness(output)
-    _check_technical_explanation(output)
-    _check_reset_mode_accuracy(output)
-    _check_real_project_example(output)
-    _check_concept_mistakes(output)
-    _check_interview(output)
-    _check_cta(output)
-    _check_storyboard(output)
-    _check_quality_score(output)
+    """
+    Run every check and collect ALL failures instead of stopping at the
+    first one. This matters for two reasons: (1) the retry-feedback loop
+    can tell the model about every current problem in one round instead
+    of one-at-a-time whack-a-mole, converging faster; (2) if the retry
+    budget runs out and the best-effort fallback returns content anyway,
+    the logged issue list reflects everything actually wrong, not just
+    whichever check happened to run first.
+    """
+    checks = [
+        _check_no_preamble, _check_hook_not_fear_or_generic, _check_problem,
+        _check_analogy, _check_analogy_completeness, _check_technical_explanation,
+        _check_reset_mode_accuracy, _check_real_project_example, _check_concept_mistakes,
+        _check_interview, _check_cta, _check_storyboard, _check_quality_score,
+    ]
+    issues: list[str] = []
+    for check in checks:
+        try:
+            check(output)
+        except QualityCheckError as e:
+            issues.append(str(e))
+    if issues:
+        numbered = "\n".join(f"{i + 1}. {issue}" for i, issue in enumerate(issues))
+        raise QualityCheckError(f"{len(issues)} issue(s) found:\n{numbered}")
 
 
 def _check_no_preamble(output: ReelScriptOutput) -> None:

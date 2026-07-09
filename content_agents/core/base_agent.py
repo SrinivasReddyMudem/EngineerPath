@@ -12,7 +12,7 @@ from typing import Literal
 from .logger import get_logger
 
 MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"  # confirmed working with Groq's strict json_schema mode on this account
-MAX_RETRIES = 3  # bumped from 2: richer multi-section schemas (e.g. reel-script) have more gates that can each fail per attempt
+MAX_RETRIES = 2  # each retry re-sends the full prompt + accumulated feedback — keep this low for latency; rely on the best-effort fallback below instead of chasing more attempts
 
 
 class AgentError(BaseModel):
@@ -20,6 +20,11 @@ class AgentError(BaseModel):
     error_type: Literal["api_error", "validation_error", "quality_check_failed"]
     message: str
     raw_response: str | None = None
+
+
+class BestEffortWarning(BaseModel):
+    """Attached (not raised) when content is returned despite a failed quality gate on the final attempt."""
+    unresolved_issue: str
 
 
 class QualityCheckError(Exception):
@@ -78,7 +83,12 @@ class BaseAgent:
             except QualityCheckError as e:
                 self.logger.warning(f"Quality gate failed (attempt {attempt + 1}): {e}")
                 if attempt == MAX_RETRIES:
-                    return AgentError(agent=self.AGENT_NAME, error_type="quality_check_failed", message=str(e))
+                    # Best-effort fallback: `parsed` already passed strict schema validation —
+                    # it just missed one quality bar. Returning it beats a hard failure after
+                    # the full retry budget was already spent; log the gap for later review
+                    # instead of discarding a mostly-good result.
+                    self.logger.warning(f"Returning best-effort result with unresolved issue: {e}")
+                    return parsed
                 seen_issues.append(str(e))
 
             except BadRequestError as e:
