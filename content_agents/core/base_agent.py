@@ -6,7 +6,7 @@ applied to content generation instead of technical analysis.
 
 import os
 import json
-from groq import Groq, BadRequestError
+from groq import Groq, BadRequestError, RateLimitError
 from pydantic import BaseModel, ValidationError
 from typing import Literal
 from .logger import get_logger
@@ -15,9 +15,30 @@ MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"  # confirmed working with Gr
 MAX_RETRIES = 2  # each retry re-sends the full prompt + accumulated feedback — keep this low for latency; rely on the best-effort fallback below instead of chasing more attempts
 
 
+def _load_api_keys() -> list[str]:
+    """
+    GROQ_API_KEY is required; GROQ_API_KEY_2, GROQ_API_KEY_3, ... are
+    optional fallbacks tried in order whenever the current key hits its
+    daily rate limit — each Groq account has its own separate 500k TPD
+    quota, so a second account's key genuinely gives more headroom.
+    """
+    keys = []
+    primary = os.getenv("GROQ_API_KEY")
+    if primary:
+        keys.append(primary)
+    i = 2
+    while True:
+        k = os.getenv(f"GROQ_API_KEY_{i}")
+        if not k:
+            break
+        keys.append(k)
+        i += 1
+    return keys
+
+
 class AgentError(BaseModel):
     agent: str
-    error_type: Literal["api_error", "validation_error", "quality_check_failed"]
+    error_type: Literal["api_error", "validation_error", "quality_check_failed", "rate_limit_exceeded"]
     message: str
     raw_response: str | None = None
 
@@ -36,15 +57,25 @@ class BaseAgent:
     AGENT_NAME = "base"
 
     def __init__(self):
-        api_key = os.getenv("GROQ_API_KEY")
-        if not api_key:
+        self._api_keys = _load_api_keys()
+        if not self._api_keys:
             raise EnvironmentError(
                 "GROQ_API_KEY not set.\n"
                 "Get a free key (no credit card) at console.groq.com\n"
                 "Then add it to .env as: GROQ_API_KEY=your-key"
             )
-        self.client = Groq(api_key=api_key)
+        self._key_index = 0
+        self.client = Groq(api_key=self._api_keys[0])
         self.logger = get_logger(self.AGENT_NAME)
+
+    def _switch_to_next_key(self) -> bool:
+        """Returns True if a fallback key was available and swapped in, False if keys are exhausted."""
+        if self._key_index + 1 >= len(self._api_keys):
+            return False
+        self._key_index += 1
+        self.client = Groq(api_key=self._api_keys[self._key_index])
+        self.logger.warning(f"Rate limit hit on key #{self._key_index} — switched to fallback key #{self._key_index + 1}.")
+        return True
 
     def run(self, user_message: str) -> BaseModel | AgentError:
         """Always returns a Pydantic model or AgentError — never raises."""
@@ -115,6 +146,13 @@ class BaseAgent:
                     return _return_best_effort_or_error("api_error", str(e))
                 seen_issues.append(f"API schema rejection (check field types match the schema exactly, e.g. whole numbers not decimals): {e}")
 
+            except RateLimitError as e:
+                # Only reaches here if EVERY configured key (see _load_api_keys)
+                # is also rate-limited — _call_api already tried every fallback.
+                self.logger.error(f"All configured API keys are rate-limited (attempt {attempt + 1}): {e}")
+                if attempt == MAX_RETRIES:
+                    return _return_best_effort_or_error("rate_limit_exceeded", str(e))
+
             except Exception as e:
                 self.logger.error(f"Unexpected error (attempt {attempt + 1}): {e}")
                 if attempt == MAX_RETRIES:
@@ -156,17 +194,27 @@ class BaseAgent:
         ]
         if feedback:
             messages.append({"role": "user", "content": feedback})
-        response = self.client.chat.completions.create(
-            model=MODEL,
-            messages=messages,
-            response_format={
-                "type": "json_schema",
-                "json_schema": {"name": self.AGENT_NAME.replace("-", "_"), "schema": schema, "strict": True},
-            },
-        )
-        raw = response.choices[0].message.content
-        self.logger.debug(f"Raw response preview: {raw[:300]}")
-        return raw
+
+        # Rate limits are an infrastructure problem, not a content problem —
+        # swap to the next available key and retry the SAME call rather than
+        # burning a quality-retry attempt or failing outright. Only raises
+        # once every configured key has hit its limit.
+        while True:
+            try:
+                response = self.client.chat.completions.create(
+                    model=MODEL,
+                    messages=messages,
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {"name": self.AGENT_NAME.replace("-", "_"), "schema": schema, "strict": True},
+                    },
+                )
+                raw = response.choices[0].message.content
+                self.logger.debug(f"Raw response preview: {raw[:300]}")
+                return raw
+            except RateLimitError:
+                if not self._switch_to_next_key():
+                    raise
 
     def _parse(self, raw: str) -> BaseModel:
         try:
