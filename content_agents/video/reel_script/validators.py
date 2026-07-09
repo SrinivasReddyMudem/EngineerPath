@@ -13,7 +13,7 @@ and against each other (analogy vs technical_explanation coverage).
 
 import re
 from content_agents.core.base_agent import QualityCheckError
-from .schema import ReelScriptOutput
+from .schema import ReelScriptOutput, COMPARISON_DIMENSIONS
 
 MIN_MAPPING_PAIRS = 2
 MIN_LEVEL_LEN = 25
@@ -131,6 +131,7 @@ def validate(output: ReelScriptOutput) -> None:
         _check_analogy, _check_analogy_completeness, _check_technical_explanation,
         _check_reset_mode_accuracy, _check_real_project_example, _check_concept_mistakes,
         _check_interview, _check_cta, _check_storyboard, _check_quality_score,
+        _check_comparison,
     ]
     issues: list[str] = []
     for check in checks:
@@ -408,6 +409,27 @@ def _check_storyboard(output: ReelScriptOutput) -> None:
             raise QualityCheckError(f"visual_storyboard[{i}].on_screen_text is empty or too short.")
         if len(shot.learning_objective.strip()) < MIN_LEARNING_OBJECTIVE_LEN:
             raise QualityCheckError(f"visual_storyboard[{i}].learning_objective is empty or too short.")
+
+
+def _check_comparison(output: ReelScriptOutput) -> None:
+    c = output.comparison
+    if c is None:
+        return
+    if not c.concept_a.strip() or not c.concept_b.strip():
+        raise QualityCheckError("comparison.concept_a / concept_b must both be named.")
+    if len(c.why_confused.strip()) < 15:
+        raise QualityCheckError("comparison.why_confused is too short or missing.")
+    if len(c.concept_a_definition.strip()) < 15 or len(c.concept_b_definition.strip()) < 15:
+        raise QualityCheckError("comparison.concept_a_definition / concept_b_definition are too short or missing.")
+    covered = {row.dimension for row in c.comparison_rows}
+    missing = set(COMPARISON_DIMENSIONS) - covered
+    if missing:
+        raise QualityCheckError(f"comparison.comparison_rows is missing required dimension(s): {sorted(missing)}.")
+    for row in c.comparison_rows:
+        if not row.concept_a_value.strip() or not row.concept_b_value.strip():
+            raise QualityCheckError(f"comparison.comparison_rows['{row.dimension}'] has an empty value for one side.")
+    if len(c.decision_rule.strip()) < 15:
+        raise QualityCheckError("comparison.decision_rule is too short or missing.")
 
 
 def _check_quality_score(output: ReelScriptOutput) -> None:

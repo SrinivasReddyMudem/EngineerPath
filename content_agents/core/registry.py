@@ -14,6 +14,7 @@ def _get_registry() -> dict:
     from content_agents.video.reel_critic import ReelCriticAgent
     from content_agents.interview.interview_prep import InterviewPrepAgent
     from content_agents.quiz.quiz_agent import QuizAgent
+    from content_intent.classifier import IntentClassifierAgent
 
     return {
         "cheat-sheet": CheatSheetAgent,
@@ -21,10 +22,11 @@ def _get_registry() -> dict:
         "reel-critic": ReelCriticAgent,
         "interview-prep": InterviewPrepAgent,
         "quiz": QuizAgent,
+        "intent-classifier": IntentClassifierAgent,
     }
 
 
-AGENT_NAMES = ["cheat-sheet", "reel-script", "reel-critic", "interview-prep", "quiz"]
+AGENT_NAMES = ["cheat-sheet", "reel-script", "reel-critic", "interview-prep", "quiz", "intent-classifier"]
 
 
 def get_agent(name: str) -> "BaseAgent":

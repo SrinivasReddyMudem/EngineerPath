@@ -13,18 +13,35 @@ type — with automatic retry-with-feedback when a gate fails.
 ```
 User Request
      v
-Intent / Output Router      content_agents/router.py
+Content Intent Classifier   content_intent/  (purpose="reel" only)
      v
-Knowledge Extraction        content_agents/knowledge/  (shared, deterministic)
+Intent / Output Router       content_agents/router.py
      v
-Requested Output Generator  e.g. content_agents/video/reel_script/
+Knowledge Extraction         content_agents/knowledge/  (shared, deterministic)
+     v
+Requested Output Generator   e.g. content_agents/video/reel_script/
      v
 Quality Validators
      v
-[purpose-specific critique, e.g. reel-critic]  (router.PURPOSE_TO_CRITIC)
+[purpose-specific critique, e.g. reel-critic]     (router.PURPOSE_TO_CRITIC)
+     v
+[purpose-specific production compiler, e.g. reel] (router.PURPOSE_TO_COMPILER)
      v
 Final Output
 ```
+
+For `purpose="reel"`, the final output is a `ProductionPackage`
+(`content_agents/production/schema.py`) — metadata, voice script, visual
+script, sync timeline, quality report — compiled DETERMINISTICALLY
+(`content_agents/production/compiler.py`, pure Python, no LLM call) from
+the validated `ReelScriptOutput`. The internal reasoning fields (hook,
+analogy, technical_explanation, concept_mistakes, interview, CTA) are
+never shown to the caller for this purpose — they exist purely to be
+generated and validated; only the compiled package and the quality
+report's PASS/FAIL surface. This was a deliberate choice over having the
+LLM write the voice script directly: composing validated fields with
+string templates keeps one single source of truth and adds zero latency,
+versus a second free-form call that could drift from what was validated.
 
 Purposes can have an independent critic agent auto-run after generation
 (currently only `reel` -> `reel-critic`). This is a SEPARATE LLM call
@@ -76,6 +93,18 @@ router's control flow or the knowledge layer.
    scores alone missed a real technical error in manual review. Prefer
    adding a targeted deterministic check over trusting a higher
    self-reported score — that's the higher-leverage place to add rigor.
+8. `run()` (`core/base_agent.py`) tracks the last schema-valid parse
+   across ALL retry attempts, not just the final one — if the last
+   attempt fails (even at the Groq API level, e.g. a strict-schema
+   rejection), an earlier attempt's valid content is returned instead of
+   a hard failure, with the issue logged via `agent.last_unresolved_issues`.
+   Don't special-case this away; it's why the system rarely returns
+   nothing after a long wait.
+9. Comparison queries ("X vs Y") get a structurally different reel:
+   `ReelScriptOutput.comparison` (null for non-comparison queries) holds
+   why-confused/definitions/6-dimension comparison table/decision rule,
+   validated by `_check_comparison`. The production compiler switches to
+   a comparison-specific voice script when this field is populated.
 
 ## Pre-change validation — mandatory before every commit
 

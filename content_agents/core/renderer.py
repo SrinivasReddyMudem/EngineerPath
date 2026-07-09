@@ -115,6 +115,48 @@ def render_quiz(o) -> str:
     return "\n".join(lines)
 
 
+def render_production_package(o) -> str:
+    m = o.reel_metadata
+    lines = [
+        "# SECTION 1: REEL METADATA\n",
+        f"**Topic:** {m.topic}",
+        f"**Content Type:** {m.content_type}",
+        f"**Audience:** {m.audience}",
+        f"**Duration:** {m.duration}",
+        f"**Learning Objective:** {m.learning_objective}",
+        f"**Core Message:** {m.core_message}\n",
+        "# SECTION 2: VOICE SCRIPT\n",
+        o.voice_script,
+        "\n# SECTION 3: VISUAL GENERATION SCRIPT\n",
+    ]
+    for scene in o.visual_script:
+        lines += [
+            f"**Scene {scene.scene_number}** ({scene.time_range})",
+            f"- Visual: {scene.visual}",
+            f"- Animation: {scene.animation}",
+            f"- Text: {scene.on_screen_text}",
+            f"- Purpose: {scene.purpose}\n",
+        ]
+    lines.append("# SECTION 4: SYNCHRONIZATION TIMELINE\n")
+    for entry in o.sync_timeline:
+        lines += [f"**{entry.time_range}**", f"- Voice: {entry.voice}", f"- Visual: {entry.visual}\n"]
+    q = o.quality_report
+    lines += [
+        "# SECTION 5: QUALITY REPORT\n",
+        f"- Technical Accuracy: {q.technical_accuracy}",
+        f"- Teaching Quality: {q.teaching_quality}",
+        f"- Hook Quality: {q.hook_quality}",
+        f"- Analogy Quality: {q.analogy_quality}",
+        f"- Voice Ready: {q.voice_ready}",
+        f"- Video Generation Ready: {q.video_generation_ready}",
+        f"- **Overall: {q.overall}**",
+    ]
+    if q.notes:
+        lines.append("\n**Notes:**")
+        lines += [f"- {n}" for n in q.notes]
+    return "\n".join(lines)
+
+
 def render_reel_critic(o) -> str:
     dims = [
         "curiosity", "mental_model", "story_flow", "natural_language", "retention",
@@ -134,6 +176,7 @@ def render_reel_critic(o) -> str:
 _RENDERERS = {
     "reel-script": render_reel_script,
     "reel-critic": render_reel_critic,
+    "reel-production": render_production_package,
     "cheat-sheet": render_cheat_sheet,
     "interview-prep": render_interview_prep,
     "quiz": render_quiz,

@@ -81,6 +81,26 @@ class StoryboardShot(BaseModel):
     learning_objective: str = Field(description="What this shot is meant to teach")
 
 
+COMPARISON_DIMENSIONS = ["Purpose", "Main Action", "History Impact", "When To Use", "When Not To Use", "Professional Recommendation"]
+
+
+class ComparisonRow(BaseModel):
+    dimension: Literal["Purpose", "Main Action", "History Impact", "When To Use", "When Not To Use", "Professional Recommendation"]
+    concept_a_value: str
+    concept_b_value: str
+
+
+class ComparisonStructure(BaseModel):
+    """Populated ONLY when the query is a comparison (e.g. 'Git reset vs Git rebase'); null otherwise."""
+    concept_a: str
+    concept_b: str
+    why_confused: str = Field(description="Why people mix these two up")
+    concept_a_definition: str
+    concept_b_definition: str
+    comparison_rows: list[ComparisonRow] = Field(description="One row per required dimension — all 6 required")
+    decision_rule: str = Field(description="One clear rule for which to use when")
+
+
 class QualityScore(BaseModel):
     technical_accuracy: int = Field(ge=0, le=10, description="If below 9, regenerate the inaccurate section")
     teaching_quality: int = Field(ge=0, le=10)
@@ -103,6 +123,7 @@ class ReelScriptOutput(BaseModel):
     real_project_example: RealProjectExample
     concept_mistakes: list[MistakeEntry] = Field(description="At least 2 entries with distinct levels (beginner/intermediate/professional/interview)")
     interview: InterviewQA
+    comparison: ComparisonStructure | None = Field(default=None, description="Populate ONLY for a comparison query (e.g. 'X vs Y'); otherwise null")
     engagement_cta: str = Field(description="Value-offering CTA — comment-for-reward, tag a friend, save-this, or follow-a-named-series — never a bare 'follow for more'")
     visual_storyboard: list[StoryboardShot] = Field(description="At least 4 shots covering the full 60 seconds")
     quality_score: QualityScore = Field(description="Honest self-scored quality check — regenerate the specific section if a gated score is too low, don't just lower the number")

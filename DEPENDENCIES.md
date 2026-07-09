@@ -19,6 +19,19 @@ python -c "from content_agents.router import generate_content, PURPOSE_TO_AGENT;
 **Must verify:**
 - `python -c "from content_agents.router import generate_content, PURPOSE_TO_AGENT; print(PURPOSE_TO_AGENT)"`
 - Every key in `PURPOSE_TO_AGENT` must map to a name registered in `core/registry.py`.
+- Every key in `PURPOSE_TO_COMPILER` must also have an entry in `PURPOSE_TO_RESULT_RENDER_KEY`, and that render key must exist in `core/renderer.py`'s `_RENDERERS`.
+
+### `content_intent/classifier.py` / `content_intent/schemas.py`
+**Depended on by:** `router.py` (`_classify_intent`, only for purposes in `PURPOSE_TO_COMPILER`).
+**Must verify:**
+- `python -c "from content_intent.classifier import IntentClassifierAgent; print('OK')"`
+- If classification itself fails (`AgentError`), the router falls back to a safe default rather than blocking generation — don't remove that fallback.
+
+### `content_agents/production/compiler.py` / `content_agents/production/schema.py`
+**Depended on by:** `router.py` for any purpose in `PURPOSE_TO_COMPILER` (currently only `reel`).
+**Must verify:**
+- `python -m pytest tests/test_production_compiler.py -v`
+- Pure Python, no LLM call — if you find yourself wanting to add an LLM call here, reconsider: the whole point is one source of truth (the validated `ReelScriptOutput`) with zero added latency.
 
 ### `content_agents/knowledge/extractor.py` / `content_agents/knowledge/schema.py`
 **Depended on by:** `router.py`, and all four generators' `prompt.py` (`reel_script`, `cheat_sheet`, `interview_prep`, `quiz_agent`).
@@ -98,11 +111,14 @@ Chain: `schema.py` → `validators.py` (imports schema types) → `renderer.py` 
 
 | Agent | Folder | On router? | Validators status |
 |---|---|---|---|
-| reel-script | `content_agents/video/reel_script/` | Yes (`purpose="reel"`) | Full quality gates + deterministic fact-checking; `validate()` collects ALL failing checks per attempt, not just the first |
+| reel-script | `content_agents/video/reel_script/` | Yes (`purpose="reel"`, internal — output is compiled, not shown directly) | Full quality gates + deterministic fact-checking; `validate()` collects ALL failing checks per attempt, not just the first; includes optional `comparison` structure |
 | reel-critic | `content_agents/video/reel_critic/` | Auto-runs after `purpose="reel"` (see `router.PURPOSE_TO_CRITIC`) | Independent audience-psychology/educational-experience critic — takes the rendered reel script as input, not topic-grounded (no KnowledgeExtract) |
+| intent-classifier | `content_intent/classifier.py` | Runs before generation for any purpose in `PURPOSE_TO_COMPILER` | Minimal (structural) — classifies intent_type/audience_level/learning_goal from the raw query |
 | cheat-sheet | `content_agents/cheatsheet/cheat_sheet/` | Yes (`purpose="cheatsheet"`) | Full quality gates |
 | interview-prep | `content_agents/interview/interview_prep/` | Yes (`purpose="interview"`) | Minimal (schema completeness only) — harden after live testing |
 | quiz | `content_agents/quiz/quiz_agent/` | Yes (`purpose="quiz"`) | Minimal (structural only) — harden after live testing |
+
+**Not an agent, but on the critical path for `purpose="reel"`:** `content_agents/production/compiler.py` (`compile_production_package`) — deterministic, no LLM call, turns the validated `reel-script` output into the user-facing `ProductionPackage` (metadata, voice script, visual script, sync timeline, quality report).
 
 ### Best-effort fallback (all agents, `core/base_agent.py`)
 If the final retry attempt still fails a `QualityCheckError`, `run()` returns the parsed content anyway (it already passed strict schema validation) instead of `AgentError`, logging the unresolved issue. This trades "guaranteed quality" for "never a wasted wait with nothing to show" — check the agent's log file if you want to know whether a returned result had an unresolved gate.

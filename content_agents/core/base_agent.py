@@ -48,7 +48,17 @@ class BaseAgent:
 
     def run(self, user_message: str) -> BaseModel | AgentError:
         """Always returns a Pydantic model or AgentError — never raises."""
+        self.last_unresolved_issues: list[str] = []  # populated only if best-effort fallback triggers; callers that care (e.g. the production compiler) check this right after run()
         raw = None
+        # Track the LAST schema-valid parse across ALL attempts, not just the
+        # final one. A later attempt can fail at the Groq API level (strict
+        # schema rejection) or fail Pydantic validation even though an
+        # earlier attempt already produced perfectly usable, schema-valid
+        # content — that earlier result shouldn't be thrown away just
+        # because the last roll of the dice went worse.
+        best_effort_parsed: BaseModel | None = None
+        best_effort_issue: str | None = None
+
         # Accumulate every distinct issue seen across attempts (not just the
         # latest one). Each retry regenerates the whole response from scratch,
         # so fixing field X can silently reintroduce a bug in field Y that was
@@ -67,40 +77,48 @@ class BaseAgent:
                 f"Return the complete corrected response matching the schema exactly."
             )
 
+        def _return_best_effort_or_error(error_type: str, message: str) -> BaseModel | AgentError:
+            if best_effort_parsed is not None:
+                self.logger.warning(f"Returning best-effort result from an earlier attempt; final attempt failed with: {message}")
+                self.last_unresolved_issues = [best_effort_issue or message]
+                return best_effort_parsed
+            return AgentError(agent=self.AGENT_NAME, error_type=error_type, message=message, raw_response=raw)
+
         for attempt in range(MAX_RETRIES + 1):
             try:
                 raw = self._call_api(user_message, feedback=_feedback())
                 parsed = self._parse(raw)
+                best_effort_parsed = parsed  # schema-valid regardless of what the quality check below decides
                 self._validate_quality(parsed)
                 return parsed
 
             except ValidationError as e:
                 self.logger.error(f"Schema validation failed (attempt {attempt + 1}): {e}")
                 if attempt == MAX_RETRIES:
-                    return AgentError(agent=self.AGENT_NAME, error_type="validation_error", message=str(e), raw_response=raw)
+                    return _return_best_effort_or_error("validation_error", str(e))
                 seen_issues.append(f"Schema validation error: {e}")
 
             except QualityCheckError as e:
                 self.logger.warning(f"Quality gate failed (attempt {attempt + 1}): {e}")
+                best_effort_issue = str(e)
                 if attempt == MAX_RETRIES:
-                    # Best-effort fallback: `parsed` already passed strict schema validation —
-                    # it just missed one quality bar. Returning it beats a hard failure after
-                    # the full retry budget was already spent; log the gap for later review
-                    # instead of discarding a mostly-good result.
-                    self.logger.warning(f"Returning best-effort result with unresolved issue: {e}")
-                    return parsed
+                    # `parsed` already passed strict schema validation — it just missed a
+                    # quality bar. Returning it beats a hard failure after the full retry
+                    # budget was already spent; log the gap for later review instead of
+                    # discarding a mostly-good result.
+                    return _return_best_effort_or_error("quality_check_failed", str(e))
                 seen_issues.append(str(e))
 
             except BadRequestError as e:
                 self.logger.warning(f"API schema rejection (attempt {attempt + 1}): {e}")
                 if attempt == MAX_RETRIES:
-                    return AgentError(agent=self.AGENT_NAME, error_type="api_error", message=str(e))
+                    return _return_best_effort_or_error("api_error", str(e))
                 seen_issues.append(f"API schema rejection (check field types match the schema exactly, e.g. whole numbers not decimals): {e}")
 
             except Exception as e:
                 self.logger.error(f"Unexpected error (attempt {attempt + 1}): {e}")
                 if attempt == MAX_RETRIES:
-                    return AgentError(agent=self.AGENT_NAME, error_type="api_error", message=str(e))
+                    return _return_best_effort_or_error("api_error", str(e))
 
     @staticmethod
     def _inline_schema(schema: dict) -> dict:

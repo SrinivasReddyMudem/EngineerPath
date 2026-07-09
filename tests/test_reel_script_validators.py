@@ -5,6 +5,7 @@ from content_agents.core.base_agent import QualityCheckError
 from content_agents.video.reel_script.schema import (
     ReelScriptOutput, ProblemSetup, Analogy, AnalogyMapping, TechnicalExplanation,
     RealProjectExample, MistakeEntry, InterviewQA, StoryboardShot, QualityScore,
+    ComparisonStructure, ComparisonRow,
 )
 from content_agents.video.reel_script import validators
 
@@ -239,5 +240,44 @@ def test_short_strong_answer_fails():
         weak_answer="They all just undo commits the same way.",
         follow_up_questions=["How would you recover from a bad reset --hard?"],
     ))
+    with pytest.raises(QualityCheckError):
+        validators.validate(out)
+
+
+def _valid_comparison() -> ComparisonStructure:
+    return ComparisonStructure(
+        concept_a="Git Reset", concept_b="Git Rebase",
+        why_confused="Both rewrite local history and are used to 'fix' commits, so beginners lump them together.",
+        concept_a_definition="Reset moves the branch pointer, optionally touching index/working dir.",
+        concept_b_definition="Rebase replays commits onto a new base, creating new commit hashes.",
+        comparison_rows=[
+            ComparisonRow(dimension="Purpose", concept_a_value="Move branch pointer back", concept_b_value="Replay commits on a new base"),
+            ComparisonRow(dimension="Main Action", concept_a_value="Moves HEAD/index/working dir", concept_b_value="Creates new commits with new hashes"),
+            ComparisonRow(dimension="History Impact", concept_a_value="Discards or unstages local commits", concept_b_value="Rewrites commit history linearly"),
+            ComparisonRow(dimension="When To Use", concept_a_value="Undo local, unshared commits", concept_b_value="Clean up a feature branch before a PR"),
+            ComparisonRow(dimension="When Not To Use", concept_a_value="On commits already pushed and pulled", concept_b_value="On a branch others have already pulled"),
+            ComparisonRow(dimension="Professional Recommendation", concept_a_value="Use revert instead on shared branches", concept_b_value="Rebase only personal branches, never shared ones"),
+        ],
+        decision_rule="If the commit is only local, reset; if you need clean linear history before sharing, rebase.",
+    )
+
+
+def test_valid_comparison_passes():
+    out = _valid_output(comparison=_valid_comparison())
+    validators.validate(out)
+
+
+def test_comparison_missing_dimension_fails():
+    comp = _valid_comparison()
+    comp.comparison_rows = comp.comparison_rows[:-1]  # drop "Professional Recommendation"
+    out = _valid_output(comparison=comp)
+    with pytest.raises(QualityCheckError):
+        validators.validate(out)
+
+
+def test_comparison_empty_value_fails():
+    comp = _valid_comparison()
+    comp.comparison_rows[0].concept_b_value = ""
+    out = _valid_output(comparison=comp)
     with pytest.raises(QualityCheckError):
         validators.validate(out)

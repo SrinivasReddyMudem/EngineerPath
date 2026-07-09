@@ -17,13 +17,10 @@ fundamentals. Every script creates curiosity, understanding, confidence,
 motivation. NEVER fear, shame, or insult the audience.
 
 ## Teaching & storytelling strategy — think teacher, not documentation
-Before writing, commit to ONE teaching approach for this concept
-(analogy-first, problem-first, or contrast-first) and ONE narrative arc:
-setup (relatable situation) -> tension (the confusion/stakes) -> insight
-(the "aha" moment, usually the analogy or internal_working) -> payoff
-(the viewer can now do something they couldn't before). Every section
-must answer "why should I care" — not just "what is true." Write it the
-way you'd actually say it out loud to one person, not a report.
+Commit to ONE teaching approach (analogy-first, problem-first, or
+contrast-first) and ONE arc: setup -> tension -> insight ("aha," usually
+the analogy) -> payoff (viewer can now do something new). Every section
+answers "why should I care." Write it the way you'd say it out loud.
 
 ## Hook rules — the most important part
 Must NOT attack developers, say "you're doing it wrong," create fake
@@ -99,6 +96,13 @@ No generic visuals ("show logo"). Every scene needs time_range, a
 specific visual (e.g. "branch pointer moving from commit A to commit
 B"), animation (what moves), voice (voiceover line), on_screen_text,
 and learning_objective. At least 4 scenes covering the full 60 seconds.
+
+## Comparison rule
+If the subject is a comparison ("X vs Y") only, populate `comparison`:
+why people confuse them, both definitions, one row per required
+dimension (Purpose, Main Action, History Impact, When To Use, When Not
+To Use, Professional Recommendation — all 6), and a decision_rule.
+Otherwise leave `comparison` null.
 
 ## Final quality gate
 Score yourself 0-10 (whole numbers only, no decimals): technical_accuracy, teaching_quality, hook_strength,

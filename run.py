@@ -19,7 +19,7 @@ load_dotenv()
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-from content_agents.router import generate_content, PURPOSE_TO_AGENT, PURPOSE_TO_CRITIC
+from content_agents.router import generate_content, PURPOSE_TO_AGENT, PURPOSE_TO_CRITIC, result_render_key
 from content_agents.core.renderer import render
 
 OUTPUT_DIR = Path(__file__).parent / "outputs"
@@ -32,16 +32,16 @@ def main():
     parser.add_argument("--topic", default="git", help="skill folder to ground generation in, e.g. 'git'")
     args = parser.parse_args()
 
-    agent_name = PURPOSE_TO_AGENT[args.purpose]
+    render_key = result_render_key(args.purpose)
     result, critique = generate_content(args.topic, args.subject, args.purpose)
 
     slug = args.subject.lower().replace(" ", "_")
     out_dir = OUTPUT_DIR / slug
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    text = render(agent_name, result)
+    text = render(render_key, result)
     print(text)
-    (out_dir / f"{agent_name}.md").write_text(text, encoding="utf-8")
+    (out_dir / f"{render_key}.md").write_text(text, encoding="utf-8")
 
     if critique is not None:
         critic_name = PURPOSE_TO_CRITIC[args.purpose]

@@ -3,5 +3,6 @@
   "reel-script": true,
   "reel-critic": true,
   "interview-prep": true,
-  "quiz": true
+  "quiz": true,
+  "intent-classifier": true
 }

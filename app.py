@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from content_agents.router import generate_content, PURPOSE_TO_AGENT, PURPOSE_TO_CRITIC
+from content_agents.router import generate_content, PURPOSE_TO_AGENT, PURPOSE_TO_CRITIC, result_render_key
 from content_agents.core.base_agent import AgentError
 from content_agents.core.renderer import render
 
@@ -62,7 +62,7 @@ if run_clicked:
         with st.spinner(f"Routing purpose='{purpose}'..."):
             result, critique = generate_content(topic, subject, purpose)
 
-        _render_result(PURPOSE_TO_AGENT[purpose], result)
+        _render_result(result_render_key(purpose), result)
 
         if critique is not None:
             st.divider()
