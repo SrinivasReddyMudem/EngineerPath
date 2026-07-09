@@ -16,16 +16,17 @@ def _valid_output(**overrides) -> ReelScriptOutput:
         hook_type="curiosity_hidden_power",
         problem="Developers often confuse reset's three modes because they don't know what moves the branch pointer vs the index vs the working directory.",
         analogy=Analogy(
-            analogy="A bookmark in a book.",
+            analogy="Editing a video timeline.",
             mapping=[
-                AnalogyMapping(real_world="Bookmark location", technical="Git HEAD pointer"),
-                AnalogyMapping(real_world="Moving the bookmark", technical="git reset"),
+                AnalogyMapping(real_world="Current edit position", technical="Git HEAD pointer"),
+                AnalogyMapping(real_world="Preview area selections", technical="the index / staging area"),
+                AnalogyMapping(real_world="The exported final video", technical="the working directory"),
             ],
         ),
         technical_explanation=TechnicalExplanation(
             level_1_beginner="Reset moves where your branch is pointing to in history.",
-            level_2_developer="Reset moves the branch pointer and, depending on mode, updates the index and working directory too.",
-            level_3_professional="Soft/mixed/hard reset differ in how far the reset propagates through index and working tree, which matters for safely undoing local work.",
+            level_2_developer="Reset moves the branch pointer and, depending on mode, may also reset the index; --mixed leaves the working directory untouched.",
+            level_3_professional="Soft moves only HEAD; mixed also resets the index while leaving the working directory alone; hard resets HEAD, index, and working directory together.",
         ),
         real_project_example=RealProjectExample(
             scenario="A developer on a team creates a feature commit but notices during code review that the commit structure is unclear.",
@@ -121,6 +122,35 @@ def test_too_few_storyboard_shots_fails():
     out = _valid_output(visual_storyboard=[
         StoryboardShot(time_range="0-60s", visual="One long shot", animation="Nothing changes", on_screen_text="Everything", purpose="Cover it all"),
     ])
+    with pytest.raises(QualityCheckError):
+        validators.validate(out)
+
+
+def test_mixed_reset_touching_working_dir_fails():
+    """Regression: manual review found the model claiming --mixed resets the working directory. It doesn't."""
+    out = _valid_output(technical_explanation=TechnicalExplanation(
+        level_1_beginner="Reset moves where your branch is pointing to in history overall.",
+        level_2_developer="When you run a mixed reset, Git resets the index and working directory.",
+        level_3_professional="Soft moves only HEAD; hard resets HEAD, index, and working directory together.",
+    ))
+    with pytest.raises(QualityCheckError, match="working directory"):
+        validators.validate(out)
+
+
+def test_soft_reset_touching_index_fails():
+    out = _valid_output(interview=InterviewQA(
+        question="What's the difference between reset modes?",
+        strong_answer="A soft reset moves HEAD and also resets the index to match the new commit.",
+        common_weak_answer="They all just undo commits the same way.",
+        follow_up_question="How would you recover from a bad reset --hard?",
+    ))
+    with pytest.raises(QualityCheckError, match="index"):
+        validators.validate(out)
+
+
+def test_weak_cta_without_reward_fails():
+    """Regression: manual review flagged 'comment if you've struggled' as engagement bait, not value."""
+    out = _valid_output(engagement_cta="Comment below if you've ever struggled with Git reset!")
     with pytest.raises(QualityCheckError):
         validators.validate(out)
 
