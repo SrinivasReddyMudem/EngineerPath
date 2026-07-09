@@ -1,8 +1,8 @@
-"""System prompt for quiz."""
-
-from content_agents.core.skill_loader import load_skill
-
-REFERENCES = ["concepts", "commands", "internals", "mistakes", "interview"]
+"""
+System prompt for quiz. Consumes the shared KnowledgeExtract
+(content_agents/knowledge/) — picks only the sections its schema fields
+need, rather than independently re-reading skills/.
+"""
 
 RULES = """
 # Quiz Generation Rules
@@ -17,6 +17,10 @@ the same difficulty.
 """
 
 
-def get_system_prompt(topic: str) -> str:
-    skill_content = load_skill(topic, references=REFERENCES)
+def get_system_prompt(knowledge) -> str:
+    """`knowledge` is a content_agents.knowledge.schema.KnowledgeExtract."""
+    skill_content = "\n\n".join([
+        knowledge.skill_md, knowledge.concepts, knowledge.commands,
+        knowledge.internals, knowledge.mistakes, knowledge.interview,
+    ])
     return f"{skill_content}\n\n{RULES}"

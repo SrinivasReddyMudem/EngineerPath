@@ -1,8 +1,8 @@
-"""System prompt for interview_prep."""
-
-from content_agents.core.skill_loader import load_skill
-
-REFERENCES = ["concepts", "internals", "interview", "mistakes"]
+"""
+System prompt for interview_prep. Consumes the shared KnowledgeExtract
+(content_agents/knowledge/) — picks only the sections its schema fields
+need, rather than independently re-reading skills/.
+"""
 
 RULES = """
 # Interview Prep Generation Rules
@@ -15,6 +15,10 @@ least one question.
 """
 
 
-def get_system_prompt(topic: str) -> str:
-    skill_content = load_skill(topic, references=REFERENCES)
+def get_system_prompt(knowledge) -> str:
+    """`knowledge` is a content_agents.knowledge.schema.KnowledgeExtract."""
+    skill_content = "\n\n".join([
+        knowledge.skill_md, knowledge.concepts, knowledge.internals,
+        knowledge.interview, knowledge.mistakes,
+    ])
     return f"{skill_content}\n\n{RULES}"

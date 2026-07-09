@@ -43,3 +43,17 @@ def load_skill(topic: str, references: list[str] | None = None) -> str:
             parts.append(ref_file.read_text(encoding="utf-8"))
 
     return "\n\n".join(parts)
+
+
+def load_skill_md(topic: str) -> str:
+    """Load just SKILL.md for a topic (no reference files) — used by the Knowledge Extraction layer."""
+    skill_md = SKILLS_ROOT / topic / "SKILL.md"
+    return skill_md.read_text(encoding="utf-8") if skill_md.exists() else ""
+
+
+def load_reference(topic: str, name: str) -> str:
+    """Load exactly one reference file's raw content — used by the Knowledge Extraction layer."""
+    ref_file = SKILLS_ROOT / topic / "references" / f"{name}.md"
+    if not ref_file.exists():
+        raise FileNotFoundError(f"Reference '{name}' not found for topic '{topic}' at {ref_file}")
+    return ref_file.read_text(encoding="utf-8")

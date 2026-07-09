@@ -12,7 +12,7 @@ from typing import Literal
 from .logger import get_logger
 
 MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"  # confirmed working with Groq's strict json_schema mode on this account
-MAX_RETRIES = 2
+MAX_RETRIES = 3  # bumped from 2: richer multi-section schemas (e.g. reel-script) have more gates that can each fail per attempt
 
 
 class AgentError(BaseModel):
@@ -44,11 +44,27 @@ class BaseAgent:
     def run(self, user_message: str) -> BaseModel | AgentError:
         """Always returns a Pydantic model or AgentError — never raises."""
         raw = None
-        feedback: str | None = None
+        # Accumulate every distinct issue seen across attempts (not just the
+        # latest one). Each retry regenerates the whole response from scratch,
+        # so fixing field X can silently reintroduce a bug in field Y that was
+        # already correct — cumulative feedback keeps every past constraint
+        # in view instead of trading one fix for a regression elsewhere.
+        seen_issues: list[str] = []
+
+        def _feedback() -> str | None:
+            if not seen_issues:
+                return None
+            numbered = "\n".join(f"{i + 1}. {issue}" for i, issue in enumerate(seen_issues))
+            return (
+                f"Your response has failed on these {len(seen_issues)} issue(s) across attempts so far "
+                f"— fix ALL of them simultaneously in your next response, don't just fix the most recent "
+                f"one and accidentally reintroduce an earlier one:\n{numbered}\n"
+                f"Return the complete corrected response matching the schema exactly."
+            )
 
         for attempt in range(MAX_RETRIES + 1):
             try:
-                raw = self._call_api(user_message, feedback=feedback)
+                raw = self._call_api(user_message, feedback=_feedback())
                 parsed = self._parse(raw)
                 self._validate_quality(parsed)
                 return parsed
@@ -57,19 +73,19 @@ class BaseAgent:
                 self.logger.error(f"Schema validation failed (attempt {attempt + 1}): {e}")
                 if attempt == MAX_RETRIES:
                     return AgentError(agent=self.AGENT_NAME, error_type="validation_error", message=str(e), raw_response=raw)
-                feedback = f"Your previous response failed JSON schema validation: {e} Return the complete corrected response matching the schema exactly."
+                seen_issues.append(f"Schema validation error: {e}")
 
             except QualityCheckError as e:
                 self.logger.warning(f"Quality gate failed (attempt {attempt + 1}): {e}")
                 if attempt == MAX_RETRIES:
                     return AgentError(agent=self.AGENT_NAME, error_type="quality_check_failed", message=str(e))
-                feedback = f"Your previous response failed a quality gate: {e} Fix this specific issue and return the complete corrected response."
+                seen_issues.append(str(e))
 
             except BadRequestError as e:
                 self.logger.warning(f"API schema rejection (attempt {attempt + 1}): {e}")
                 if attempt == MAX_RETRIES:
                     return AgentError(agent=self.AGENT_NAME, error_type="api_error", message=str(e))
-                feedback = f"Your previous response was rejected by schema validation: {e}. Return valid JSON matching the schema exactly."
+                seen_issues.append(f"API schema rejection (check field types match the schema exactly, e.g. whole numbers not decimals): {e}")
 
             except Exception as e:
                 self.logger.error(f"Unexpected error (attempt {attempt + 1}): {e}")

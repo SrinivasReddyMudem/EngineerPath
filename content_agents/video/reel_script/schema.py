@@ -9,64 +9,86 @@ from pydantic import BaseModel, Field
 from typing import Literal
 
 HookType = Literal[
-    "curiosity_hidden_power",
+    "curiosity_gap",
     "real_developer_situation",
+    "interview_value",
+    "mistake_correction",
     "transformation",
-    "interview_importance",
-    "mental_model",
+    "contrarian",
+    "story",
+    "challenge",
+    "authority",
+    "community",
 ]
+
+MistakeLevel = Literal["beginner", "intermediate", "professional", "interview"]
+
+
+class ProblemSetup(BaseModel):
+    real_world_problem: str = Field(description="The concrete situation where this confusion shows up")
+    developer_pain: str = Field(description="What specifically frustrates or blocks the developer")
+    why_it_matters: str = Field(description="Why understanding this actually matters, not just 'it's important'")
+    learning_goal: str = Field(description="What the viewer will be able to do after watching")
 
 
 class AnalogyMapping(BaseModel):
-    real_world: str = Field(description="The real-world element, e.g. 'Bookmark location'")
+    real_world: str = Field(description="The real-world element, e.g. 'Playhead position'")
     technical: str = Field(description="What it maps to technically, e.g. 'Git HEAD pointer'")
 
 
 class Analogy(BaseModel):
-    analogy: str = Field(description="The real-life scenario in one sentence, e.g. 'A bookmark in a book'")
+    analogy: str = Field(description="The real-life scenario in one sentence, e.g. 'Editing a video timeline'")
     mapping: list[AnalogyMapping] = Field(description="At least 2 explicit real_world -> technical mappings")
+    limitations: str = Field(description="Where this analogy breaks down or stops applying — required so it can't create a misconception")
 
 
 class TechnicalExplanation(BaseModel):
-    level_1_beginner: str = Field(description="Simple, technically correct mental model — never an incorrect oversimplification")
-    level_2_developer: str = Field(description="Developer-level explanation — assumes basic familiarity")
-    level_3_professional: str = Field(description="Professional/interview-level understanding — the real depth")
+    level_1_beginner: str = Field(description="WHAT it is — simple, technically correct, no jargon")
+    level_2_developer: str = Field(description="HOW it works — assumes basic familiarity")
+    level_3_professional: str = Field(description="WHY and WHEN to use it — the real engineering judgment")
+    internal_working: str = Field(description="The deep internal mechanism — exact, not approximated")
 
 
 class RealProjectExample(BaseModel):
+    industry_context: str = Field(description="e.g. 'software team', 'embedded project', 'cloud system'")
     scenario: str = Field(description="A real team/engineering situation, grounded in the topic's workflows reference")
     problem: str = Field(description="The confusion or friction this creates, stated without fear framing")
     solution: str = Field(description="How the concept/technique resolves it")
-    why_professionals_use_it: str = Field(description="The concrete engineering payoff, connected to teamwork/code review/production practice")
+    professional_reasoning: str = Field(description="Why an engineer would actually choose this — connected to teamwork/code review/production")
 
 
-class ConceptUnderstanding(BaseModel):
-    beginner_misunderstanding: str = Field(description="What people commonly think, stated neutrally — not shameful")
-    professional_insight: str = Field(description="How experienced engineers actually use/understand it")
+class MistakeEntry(BaseModel):
+    level: MistakeLevel
+    wrong_belief: str
+    correct_understanding: str
+    professional_tip: str
 
 
 class InterviewQA(BaseModel):
     question: str
-    strong_answer: str = Field(description="What a strong answer covers")
-    common_weak_answer: str = Field(description="What a weak-but-common answer looks like, and why it falls short")
-    follow_up_question: str = Field(description="A natural follow-up an interviewer would ask next")
+    why_interviewer_asks: str = Field(description="What this question reveals about the candidate's understanding")
+    strong_answer: str = Field(description="Must cover: definition, internal mechanism, practical example")
+    weak_answer: str = Field(description="A common but incomplete answer, and implicitly why it falls short")
+    follow_up_questions: list[str] = Field(description="At least 1 natural follow-up an interviewer would ask next")
 
 
 class StoryboardShot(BaseModel):
     time_range: str = Field(description="e.g. '0-5s'")
-    visual: str = Field(description="What's on screen")
+    visual: str = Field(description="What's on screen — specific, e.g. 'branch pointer moving from commit A to commit B', never 'show logo'")
     animation: str = Field(description="What moves/changes during this shot")
+    voice: str = Field(description="The voiceover line spoken during this shot")
     on_screen_text: str = Field(description="Text overlay for this shot")
-    purpose: str = Field(description="What this shot is meant to achieve, e.g. 'Create mental model'")
+    learning_objective: str = Field(description="What this shot is meant to teach")
 
 
 class QualityScore(BaseModel):
-    technical_accuracy: int = Field(ge=0, le=10)
-    beginner_clarity: int = Field(ge=0, le=10)
-    professional_relevance: int = Field(ge=0, le=10)
-    hook_quality: int = Field(ge=0, le=10, description="If below 8, the hook must be regenerated before returning")
-    analogy_quality: int = Field(ge=0, le=10, description="If below 8, the analogy must be regenerated before returning")
-    share_save_potential: int = Field(ge=0, le=10)
+    technical_accuracy: int = Field(ge=0, le=10, description="If below 9, regenerate the inaccurate section")
+    teaching_quality: int = Field(ge=0, le=10)
+    hook_strength: int = Field(ge=0, le=10, description="If below 8, create another hook")
+    analogy_quality: int = Field(ge=0, le=10, description="If below 8, regenerate the analogy")
+    real_world_relevance: int = Field(ge=0, le=10)
+    interview_value: int = Field(ge=0, le=10)
+    shareability: int = Field(ge=0, le=10)
 
 
 class ReelScriptOutput(BaseModel):
@@ -75,12 +97,12 @@ class ReelScriptOutput(BaseModel):
     topic: str
     hook: str = Field(description="Opening line using exactly one non-fear-based pattern from hook_type")
     hook_type: HookType
-    problem: str = Field(description="What confusion exists and why understanding it matters — never fear-framed")
+    problem: ProblemSetup
     analogy: Analogy
     technical_explanation: TechnicalExplanation
     real_project_example: RealProjectExample
-    concept_understanding: ConceptUnderstanding
+    concept_mistakes: list[MistakeEntry] = Field(description="At least 2 entries with distinct levels (beginner/intermediate/professional/interview)")
     interview: InterviewQA
-    engagement_cta: str = Field(description="Value-offering CTA that encourages a learning community — never a bare 'follow for more'")
+    engagement_cta: str = Field(description="Value-offering CTA — comment-for-reward, tag a friend, save-this, or follow-a-named-series — never a bare 'follow for more'")
     visual_storyboard: list[StoryboardShot] = Field(description="At least 4 shots covering the full 60 seconds")
-    quality_score: QualityScore = Field(description="Honest self-scored quality check — regenerate content if hook_quality or analogy_quality < 8, don't just lower the score")
+    quality_score: QualityScore = Field(description="Honest self-scored quality check — regenerate the specific section if a gated score is too low, don't just lower the number")

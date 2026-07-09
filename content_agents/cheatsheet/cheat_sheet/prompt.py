@@ -1,8 +1,8 @@
-"""System prompt for cheat_sheet. Loads only the reference files this agent's schema needs."""
-
-from content_agents.core.skill_loader import load_skill
-
-REFERENCES = ["concepts", "commands", "workflows", "mistakes", "interview"]
+"""
+System prompt for cheat_sheet. Consumes the shared KnowledgeExtract
+(content_agents/knowledge/) — picks only the sections its schema fields
+need, rather than independently re-reading skills/.
+"""
 
 RULES = """
 # Cheat Sheet Generation Rules
@@ -26,6 +26,10 @@ mistakes_grounded, memory_trick_present — PASS only with real evidence.
 """
 
 
-def get_system_prompt(topic: str) -> str:
-    skill_content = load_skill(topic, references=REFERENCES)
+def get_system_prompt(knowledge) -> str:
+    """`knowledge` is a content_agents.knowledge.schema.KnowledgeExtract."""
+    skill_content = "\n\n".join([
+        knowledge.skill_md, knowledge.concepts, knowledge.commands,
+        knowledge.workflows, knowledge.mistakes, knowledge.interview,
+    ])
     return f"{skill_content}\n\n{RULES}"
