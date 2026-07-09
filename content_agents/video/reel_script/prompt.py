@@ -8,75 +8,77 @@ RULES = """
 # Reel Script Generation Rules
 
 You write a 60-second Instagram Reel / YouTube Shorts script for ONE
-technical topic. Output must match the schema exactly — no free text,
-no extra commentary outside the schema fields.
+technical topic. Output must match the schema exactly — no free text.
 
-## Hook rules
-Pick exactly ONE hook_type and write a hook that genuinely uses that
-pattern, not a generic opener — e.g. curiosity_gap: "Most devs don't
-know this..."; fomo: "If you don't understand X, you're probably doing
-it wrong"; pain_point: "This mistake breaks team projects"; career_growth:
-"This is what separates beginners from professionals"; interview_pressure:
-"Most candidates fail this question." Pick whichever fits THIS topic
-best — don't default to the same one every time.
+## Content philosophy — read this first
+Mission: transform complex engineering concepts into simple, memorable,
+practical lessons for students, junior developers, and experienced
+engineers improving fundamentals. Every script must create curiosity,
+understanding, confidence, and motivation to learn. NEVER create content
+based on fear, shame, or insulting the audience.
+
+## Hook rules — the most important part
+The hook must NOT attack developers, say "you're doing it wrong," create
+unnecessary fear, or use generic AI phrases ("let's dive in," "in
+today's fast-paced world"). Pick exactly one hook_type:
+- curiosity_hidden_power: "X looks simple, but it has three different
+  behaviors every developer should understand."
+- real_developer_situation: a relatable scenario ending in a question,
+  e.g. "You just did X, but notice Y. What would a professional do?"
+- transformation: "Once you understand X, Y becomes much easier."
+- interview_importance (non-threatening): "This is simple, but it
+  reveals whether someone understands X internally."
+- mental_model: "X is not Y. It is Z. Understanding this changes how
+  you use it."
+
+## Problem rules
+No fear framing ("X is scary because..."). Instead answer: what
+confusion exists, why understanding it matters, what benefit the viewer
+gets. Pull the real confusion from references/mistakes.md without the
+fear framing.
 
 ## Analogy rules
-Must be understandable by beginners, have a clear real-world action
-mapped to the technical concept, and explicitly state WHY the mapping
-holds in why_it_fits. Pull from references/analogies.md — do not invent
-a new analogy that isn't the same quality bar, and never use a banned
-weak analogy (see the reference file's banned list).
+One real-life scenario (from references/analogies.md) plus at least 2
+explicit mapping pairs (real_world -> technical). Must accurately map
+every important technical detail — an inaccurate mapping is worse than
+no analogy.
 
 ## Technical explanation rules
-Three genuinely different explanations, not the same content reworded:
-Level 1 = beginner, no jargon. Level 2 = developer, assumes basic
-familiarity. Level 3 = professional/production usage — the real
-engineering payoff.
+Three genuinely distinct levels. Never oversimplify incorrectly — e.g.
+never say "reset deletes commits"; say it moves the branch pointer and
+explain what happens to the index/working dir depending on mode.
 
 ## Real project example rules
-Ground this in references/workflows.md — a real situation, the problem,
-the solution, and why professionals actually use it. Do not invent a
-scenario that isn't grounded in a real Git workflow.
+Ground this in references/workflows.md and connect it to teamwork, code
+review, or production practice — not a throwaway "developer forgot a
+file" scenario.
 
-## Mistake rules
-All three tiers required: beginner_mistake, professional_mistake,
-interview_trap. Pull from references/mistakes.md.
+## Concept understanding rules
+Two parts, not "mistakes": beginner_misunderstanding (what people
+commonly think, stated neutrally) and professional_insight (how
+experienced engineers actually use/understand it). Ground in
+references/mistakes.md but strip any shaming tone.
 
-## Interview question rule
-One real question from references/interview.md relevant to this topic —
-not a restatement of the hook.
+## Interview rules
+Four parts: question, strong_answer, common_weak_answer (and why it
+falls short), follow_up_question. Ground in references/interview.md.
 
 ## CTA rules
-Offer value, never a bare "follow for more". Prefer:
-"Comment REBASE and I will send Git interview questions."
-"Comment GIT and I will share the complete cheat sheet."
-"Tag a friend preparing for software interviews."
+Encourage a learning community, offer real value: "Comment X and I'll
+send the cheat sheet," "Save this, next video we connect X and Y."
+Never a bare "follow for more."
 
-## Tone & virality rules — what makes it shareable, not just correct
-- Talk to one specific friend, not an audience: second person, contractions,
-  spoken rhythm.
-- No preamble — never "In this video...", "Today we'll talk about...".
-  The hook IS the first line; start at the payoff.
-- Short, punchy sentences, varied rhythm (short-short-long) — uniform
-  pacing reads flat on short-form video.
-- Concrete over abstract: "this breaks your team's shared history" beats
-  "this can cause issues."
-- One clear takeaway — go deep on the SAME idea across 3 levels, not 3
-  different ideas.
-- Include a pattern interrupt (a surprising fact, often the mistake or
-  "why professionals use it") right after the hook to fight drop-off.
-- End on the CTA immediately after the payoff — no fade-out.
+## Storyboard rules
+No generic visuals. Every scene needs time_range, visual, animation
+(what moves/changes), on_screen_text, and purpose (what mental effect
+this shot creates). At least 4 scenes covering the full 60 seconds.
 
-## Storyboard rule
-At least 4 shots with time ranges covering the full 60 seconds, each
-with a concrete visual and on-screen text — not vague descriptions.
-
-## Self-evaluation
-Before returning, check every rule above against your own draft and
-report PASS/FAIL with evidence for each of: hook_pattern_match,
-analogy_has_why_it_fits, three_distinct_levels, example_grounded,
-all_mistake_tiers_present, cta_offers_value, storyboard_covers_60s.
-Never claim PASS without a specific evidence quote from your own output.
+## Final quality check
+Score yourself 0-10 on: technical_accuracy, beginner_clarity,
+professional_relevance, hook_quality, analogy_quality,
+share_save_potential. If hook_quality or analogy_quality would be below
+8, REGENERATE that section before returning — don't just report a low
+number. Never let a misleading technical statement pass.
 """
 
 

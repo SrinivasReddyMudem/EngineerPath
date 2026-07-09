@@ -17,7 +17,12 @@ def render_reel_script(o) -> str:
         f"# Reel Script — {o.topic}\n",
         f"**Hook ({o.hook_type}):** {o.hook}\n",
         f"**Problem:** {o.problem}\n",
-        f"**Analogy:** {o.analogy.statement}\n_Why it fits: {o.analogy.why_it_fits}_\n",
+        f"**Analogy:** {o.analogy.analogy}",
+    ]
+    for pair in o.analogy.mapping:
+        lines.append(f"- {pair.real_world} = {pair.technical}")
+    lines += [
+        "",
         "**Technical explanation:**",
         f"- L1 (beginner): {o.technical_explanation.level_1_beginner}",
         f"- L2 (developer): {o.technical_explanation.level_2_developer}",
@@ -27,16 +32,30 @@ def render_reel_script(o) -> str:
         f"- Problem: {o.real_project_example.problem}",
         f"- Solution: {o.real_project_example.solution}",
         f"- Why professionals use it: {o.real_project_example.why_professionals_use_it}\n",
-        "**Common mistakes:**",
-        f"- Beginner: {o.common_mistakes.beginner_mistake}",
-        f"- Professional: {o.common_mistakes.professional_mistake}",
-        f"- Interview trap: {o.common_mistakes.interview_trap}\n",
-        f"**Interview question:** {o.interview_question}\n",
+        "**Concept understanding:**",
+        f"- Beginner misunderstanding: {o.concept_understanding.beginner_misunderstanding}",
+        f"- Professional insight: {o.concept_understanding.professional_insight}\n",
+        "**Interview:**",
+        f"- Q: {o.interview.question}",
+        f"- Strong answer: {o.interview.strong_answer}",
+        f"- Common weak answer: {o.interview.common_weak_answer}",
+        f"- Follow-up: {o.interview.follow_up_question}\n",
         f"**CTA:** {o.engagement_cta}\n",
         "**Storyboard:**",
     ]
     for shot in o.visual_storyboard:
-        lines.append(f"- [{shot.time_range}] {shot.visual} — \"{shot.on_screen_text}\"")
+        lines.append(
+            f"- [{shot.time_range}] {shot.visual} | animation: {shot.animation} | "
+            f"text: \"{shot.on_screen_text}\" | purpose: {shot.purpose}"
+        )
+    qs = o.quality_score
+    lines += [
+        "",
+        "**Self-scored quality:** "
+        f"accuracy={qs.technical_accuracy}/10, clarity={qs.beginner_clarity}/10, "
+        f"relevance={qs.professional_relevance}/10, hook={qs.hook_quality}/10, "
+        f"analogy={qs.analogy_quality}/10, shareability={qs.share_save_potential}/10",
+    ]
     return "\n".join(lines)
 
 
