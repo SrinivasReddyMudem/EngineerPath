@@ -12,7 +12,7 @@ Report's `retention` field but is never displayed; final output stays clean.
 import streamlit as st
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 from content_agents.router import generate_content, PURPOSE_TO_AGENT, PURPOSE_TO_CRITIC, result_render_key
 from content_agents.core.base_agent import AgentError
