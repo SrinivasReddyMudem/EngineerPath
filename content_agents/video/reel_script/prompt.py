@@ -71,9 +71,9 @@ rewrite. Any --hard mention needs a caution word in the same sentence.
 
 ## Real project example rules
 industry_context + scenario + problem + solution + professional_reasoning.
-Ground in references/workflows.md, connect to teamwork/code review/
-production — not "developer forgot a file." Use messy commits before a
-PR or history cleanup before sharing a branch.
+Ground in references/workflows.md, connect to teamwork/review —
+not "developer forgot a file." Use messy commits before a PR or
+history cleanup before sharing a branch.
 
 ## Concept mistakes rules
 2-3 entries, distinct levels (beginner/intermediate/professional/
@@ -100,18 +100,19 @@ literal hook. The memory_anchor and engagement_cta text must each
 appear verbatim as their own shot's voice, at the end. At least 6
 shots, ONE self-contained idea per shot's `voice` (never cram HEAD move
 + index change + working-dir change into one line — that's 3 shots),
-covering hook -> problem -> analogy -> technical (2+ shots) -> real
-example -> memory anchor -> CTA, in that order. A validated analogy or
-real-example that's never actually SPOKEN is dead weight — one shot's
-voice must narrate the analogy itself (not skip straight to facts), and
-one must narrate the real project's team/PR/review context. No generic visuals
-("show logo"). `visual` states WHO's on screen, WHERE, WHAT ACTION —
-e.g. "A developer at a laptop; terminal shows commits A-B-C, C
-highlighted red." `animation` names the specific motion (e.g. "HEAD
-slides backward from C to B"). `camera` says how it's shot (e.g. "Zoom
-into the commit history" or "Static wide shot"). EVERY shot also needs
-`on_screen_text` (text overlay, e.g. "HEAD moves back") and
-`learning_objective` (what this shot teaches) — both required. Full 60s.
+covering hook -> why it matters (plain-language answer, before any
+analogy) -> analogy -> technical (2+ shots) -> real example -> memory
+anchor -> CTA, in that order. A validated analogy or real-example
+that's never actually SPOKEN is dead weight: one shot must narrate the
+analogy itself, and one must narrate the real example's SPECIFIC
+scenario — not a generic line like "now you can work more efficiently."
+No generic visuals ("show logo"). `visual` states WHO's on screen,
+WHERE, WHAT ACTION — e.g. "A developer at a laptop; terminal shows
+commits A-B-C, C highlighted red." `animation` names the specific
+motion (e.g. "HEAD slides backward from C to B"). `camera` says how
+it's shot (e.g. "Zoom into the commit history" or "Static wide shot").
+EVERY shot also needs `on_screen_text` (overlay text) and
+`learning_objective` — both required. Full 60s.
 
 ## Comparison rule
 If the subject is a comparison ("X vs Y") only, populate `comparison`:

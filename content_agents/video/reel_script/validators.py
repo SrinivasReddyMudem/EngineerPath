@@ -155,6 +155,7 @@ def validate(output: ReelScriptOutput) -> None:
         _check_storyboard, _check_voice_script_pacing, _check_voice_visual_sync,
         _check_first_shot_is_the_hook, _check_anchor_and_cta_are_spoken,
         _check_analogy_appears_in_voice, _check_real_example_context_appears_in_voice,
+        _check_problem_context_appears_in_voice,
         _check_quality_score, _check_comparison,
     ]
     issues: list[str] = []
@@ -267,11 +268,29 @@ def _check_anchor_and_cta_are_spoken(output: ReelScriptOutput) -> None:
         )
 
 
-STOPWORDS = {"a", "an", "the", "of", "in", "on", "at", "to", "for", "and", "or", "is", "are", "your", "you", "like", "think"}
+STOPWORDS = {
+    "a", "an", "the", "of", "in", "on", "at", "to", "for", "and", "or", "is", "are", "your", "you", "like", "think",
+    # common function words long enough to slip past the len>3 filter — none of these are ever
+    # distinctive of a specific scenario, so matching on them alone would be a false positive.
+    "before", "during", "after", "then", "than", "also", "just", "only", "still", "even",
+    "much", "more", "most", "very", "being", "that", "they", "into", "onto", "upon",
+    "when", "while", "since", "because", "about", "with", "this", "these", "those",
+    # generic Git vocabulary that appears in nearly every shot regardless of topic — matching on these
+    # would let any shot "satisfy" a specificity check by accident, so they don't count as distinctive.
+    "git", "commit", "commits", "committed", "reset", "resets", "branch", "branches", "code", "review",
+    "team", "working", "directory", "staging", "index", "head", "history", "changes", "change", "file", "files",
+}
 
 
 def _significant_words(text: str) -> list[str]:
     return [w.strip(".,!?:;'\"") for w in text.lower().split() if w.strip(".,!?:;'\"") not in STOPWORDS and len(w) > 3]
+
+
+def _voice_word_set(output: ReelScriptOutput) -> set[str]:
+    """Exact tokenized words spoken across all shots — token-set intersection avoids substring
+    false-positives (e.g. the word "uncommit" incidentally matching inside "uncommitted")."""
+    combined_voice = " ".join(shot.voice for shot in output.visual_storyboard)
+    return set(_significant_words(combined_voice))
 
 
 def _check_analogy_appears_in_voice(output: ReelScriptOutput) -> None:
@@ -281,23 +300,56 @@ def _check_analogy_appears_in_voice(output: ReelScriptOutput) -> None:
     skips straight to bare technical facts. Require at least one of the
     analogy's own significant words to actually appear spoken.
     """
-    combined_voice = " ".join(shot.voice for shot in output.visual_storyboard).lower()
-    words = _significant_words(output.analogy.analogy)
-    if words and not any(w in combined_voice for w in words):
+    words = set(_significant_words(output.analogy.analogy))
+    if words and not (words & _voice_word_set(output)):
         raise QualityCheckError(
             f"The analogy ('{output.analogy.analogy}') never appears in any shot's voice line — none of "
-            f"its key words {words} are spoken anywhere. A validated-but-unspoken analogy doesn't teach "
-            f"anyone; narrate it in at least one shot, don't skip straight to technical facts."
+            f"its key words {sorted(words)} are spoken anywhere. A validated-but-unspoken analogy doesn't "
+            f"teach anyone; narrate it in at least one shot, don't skip straight to technical facts."
         )
 
 
 def _check_real_example_context_appears_in_voice(output: ReelScriptOutput) -> None:
-    """Same gap for real_project_example: teamwork/production context must actually be narrated, not just validated as a hidden field."""
-    combined_voice = " ".join(shot.voice for shot in output.visual_storyboard).lower()
-    if not any(kw in combined_voice for kw in TEAMWORK_CONTEXT_KEYWORDS):
+    """
+    Same gap for real_project_example, but checking for generic industry
+    keywords ANYWHERE in the combined voice is too weak — a real
+    generation was found where the hook happened to mention "pull
+    request" as a timing reference, which alone satisfied the old check
+    while the shot meant to carry the real example narrated a content-free
+    line ("now you can correct mistakes efficiently"). Require the
+    example's OWN significant words (from scenario/solution/reasoning) to
+    actually be spoken, with at least 2 distinct matches so one
+    incidental word overlap can't pass it.
+    """
+    ex = output.real_project_example
+    words = set(_significant_words(f"{ex.scenario} {ex.solution} {ex.professional_reasoning}"))
+    matched = words & _voice_word_set(output)
+    if words and len(matched) < min(2, len(words)):
         raise QualityCheckError(
-            "real_project_example's teamwork/code-review/production context never appears in any shot's "
-            "voice line — the reel must narrate the real-world scenario, not just validate it silently."
+            "real_project_example's own scenario/solution/reasoning never actually gets narrated — a "
+            "generic wrap-up line ('now you can work more efficiently') isn't enough. Narrate the specific "
+            "real-world scenario (e.g. reset before a PR, revert once teammates pulled), not just validate "
+            "it silently."
+        )
+
+
+def _check_problem_context_appears_in_voice(output: ReelScriptOutput) -> None:
+    """
+    Real generation gap: the storyboard jumped straight from hook to
+    analogy with no spoken answer to "why does this matter" in between —
+    a validated problem.why_it_matters/developer_pain that never gets
+    narrated leaves the reel feeling like a technical summary instead of
+    a taught lesson. Require at least 2 of the problem's own significant
+    words to actually be spoken, same bar as the analogy/real-example checks.
+    """
+    p = output.problem
+    words = set(_significant_words(f"{p.developer_pain} {p.why_it_matters}"))
+    matched = words & _voice_word_set(output)
+    if words and len(matched) < min(2, len(words)):
+        raise QualityCheckError(
+            "problem.developer_pain / why_it_matters is never narrated — the storyboard jumps straight "
+            "from the hook to the analogy with no spoken bridge. Add one shot that answers 'why does this "
+            "matter' in plain language before the analogy begins."
         )
 
 
