@@ -154,6 +154,7 @@ def validate(output: ReelScriptOutput) -> None:
         _check_real_project_example, _check_concept_mistakes, _check_interview, _check_cta, _check_memory_anchor,
         _check_storyboard, _check_voice_script_pacing, _check_voice_visual_sync,
         _check_first_shot_is_the_hook, _check_anchor_and_cta_are_spoken,
+        _check_analogy_appears_in_voice, _check_real_example_context_appears_in_voice,
         _check_quality_score, _check_comparison,
     ]
     issues: list[str] = []
@@ -263,6 +264,40 @@ def _check_anchor_and_cta_are_spoken(output: ReelScriptOutput) -> None:
         raise QualityCheckError(
             f"engagement_cta ('{output.engagement_cta}') does not appear word-for-word in any shot's voice "
             f"line. Put it verbatim as the final shot's voice."
+        )
+
+
+STOPWORDS = {"a", "an", "the", "of", "in", "on", "at", "to", "for", "and", "or", "is", "are", "your", "you", "like", "think"}
+
+
+def _significant_words(text: str) -> list[str]:
+    return [w.strip(".,!?:;'\"") for w in text.lower().split() if w.strip(".,!?:;'\"") not in STOPWORDS and len(w) > 3]
+
+
+def _check_analogy_appears_in_voice(output: ReelScriptOutput) -> None:
+    """
+    A validated, complete analogy that never gets NARRATED is dead weight
+    — the model can pass _check_analogy_completeness while the storyboard
+    skips straight to bare technical facts. Require at least one of the
+    analogy's own significant words to actually appear spoken.
+    """
+    combined_voice = " ".join(shot.voice for shot in output.visual_storyboard).lower()
+    words = _significant_words(output.analogy.analogy)
+    if words and not any(w in combined_voice for w in words):
+        raise QualityCheckError(
+            f"The analogy ('{output.analogy.analogy}') never appears in any shot's voice line — none of "
+            f"its key words {words} are spoken anywhere. A validated-but-unspoken analogy doesn't teach "
+            f"anyone; narrate it in at least one shot, don't skip straight to technical facts."
+        )
+
+
+def _check_real_example_context_appears_in_voice(output: ReelScriptOutput) -> None:
+    """Same gap for real_project_example: teamwork/production context must actually be narrated, not just validated as a hidden field."""
+    combined_voice = " ".join(shot.voice for shot in output.visual_storyboard).lower()
+    if not any(kw in combined_voice for kw in TEAMWORK_CONTEXT_KEYWORDS):
+        raise QualityCheckError(
+            "real_project_example's teamwork/code-review/production context never appears in any shot's "
+            "voice line — the reel must narrate the real-world scenario, not just validate it silently."
         )
 
 

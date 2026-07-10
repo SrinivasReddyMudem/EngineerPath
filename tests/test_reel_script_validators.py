@@ -73,7 +73,7 @@ def _valid_output(**overrides) -> ReelScriptOutput:
         engagement_cta="Comment RESET and I'll send you the full Git reset cheat sheet.",
         visual_storyboard=[
             StoryboardShot(time_range="0-5s", visual="A developer at a laptop looking confused at a messy commit they just made", animation="The developer leans toward the screen, squinting at the terminal", camera="Close-up on the developer's face then whip to the screen", voice="You just committed the wrong file right before opening a pull request. What do you do now?", on_screen_text="Wrong commit?", learning_objective="Create the problem"),
-            StoryboardShot(time_range="5-15s", visual="A developer at a laptop; terminal shows a commit timeline A-B-C-D on screen", animation="The HEAD pointer slides backward from D to C", camera="Zoom into the commit history", voice="Git Reset can help you fix this safely, by moving your branch pointer to a different commit.", on_screen_text="HEAD moves back", learning_objective="Introduce the mental model"),
+            StoryboardShot(time_range="5-15s", visual="A developer at a laptop; terminal shows a commit timeline A-B-C-D on screen", animation="The HEAD pointer slides backward from D to C", camera="Zoom into the commit history", voice="Think of it like editing a video timeline — Git Reset moves your branch pointer to a different commit, the same way you'd move your playhead to an earlier point.", on_screen_text="HEAD moves back", learning_objective="Introduce the mental model"),
             StoryboardShot(time_range="15-25s", visual="A split-screen terminal window showing the index panel highlighting separately from the working directory panel", animation="Only the index panel highlights while the working directory panel stays dim", camera="Static split-screen shot", voice="Mixed reset also resets the index, keeping your changes staged, while your working directory files stay untouched.", on_screen_text="Index resets, files stay", learning_objective="Show one distinct fact"),
             StoryboardShot(time_range="25-35s", visual="The same split-screen terminal now showing both index and working directory panels highlighting together", animation="Both panels highlight together and files visibly change", camera="Static split-screen shot", voice="Hard reset moves the index and your working directory together, so use caution — uncommitted changes can be lost for good.", on_screen_text="Hard resets everything", learning_objective="Show the contrasting fact"),
             StoryboardShot(time_range="35-50s", visual="A code review screen with a messy commit list next to a cleaned-up version", animation="Commits visually reorganize and merge into clean single entries", camera="Slow pan across the before-and-after commit lists", voice="Professionals mainly reset on local branches before opening a pull request, so reviewers see a clean, easy to follow commit history.", on_screen_text="Clean commits, easier review", learning_objective="Ground in real workflow"),
@@ -505,4 +505,35 @@ def test_memory_anchor_not_spoken_fails():
     )
     out2 = _valid_output(visual_storyboard=shots)
     with pytest.raises(QualityCheckError, match="memory_anchor"):
+        validators.validate(out2)
+
+
+def test_unspoken_analogy_fails():
+    """Regression: a fully validated, complete analogy that's never narrated in any shot's voice."""
+    out = _valid_output()
+    shots = list(out.visual_storyboard)
+    s1 = shots[1]
+    shots[1] = StoryboardShot(
+        time_range=s1.time_range, visual=s1.visual, animation=s1.animation, camera=s1.camera,
+        voice="Git Reset moves your branch pointer to a different commit in history.",  # no analogy words at all
+        on_screen_text=s1.on_screen_text, learning_objective=s1.learning_objective,
+    )
+    out2 = _valid_output(visual_storyboard=shots)
+    with pytest.raises(QualityCheckError, match="never appears in any shot's voice line"):
+        validators.validate(out2)
+
+
+def test_unspoken_real_example_context_fails():
+    """Regression: real_project_example validated as teamwork-grounded, but that context never narrated anywhere."""
+    hook = "You just made a commit and realize something is wrong. What do you do now?"  # no teamwork keywords
+    out = _with_hook(hook)
+    shots = list(out.visual_storyboard)
+    s4 = shots[4]
+    shots[4] = StoryboardShot(
+        time_range=s4.time_range, visual=s4.visual, animation=s4.animation, camera=s4.camera,
+        voice="Professionals use reset to keep their local history clean before finishing up.",  # no teamwork keyword
+        on_screen_text=s4.on_screen_text, learning_objective=s4.learning_objective,
+    )
+    out2 = _valid_output(hook=hook, visual_storyboard=shots)
+    with pytest.raises(QualityCheckError, match="teamwork/code-review/production context"):
         validators.validate(out2)

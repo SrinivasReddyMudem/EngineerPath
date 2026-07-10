@@ -63,27 +63,25 @@ untouched. `--hard` = HEAD + index + working dir. Never say --mixed
 touches the working dir, or --soft touches the index.
 
 ## Safety rule — non-negotiable
-Never say a commit is "deleted"/"disappears"/"gone" after reset or
-rebase — the object persists in the object database and is recoverable
-via reflog until garbage collected; only the branch pointer stops
-referencing it. This applies everywhere, not just when discussing
-secrets — but is especially critical there: exposed secrets/credentials
-must be rotated regardless of any history rewrite. Any --hard mention
-needs a caution word (careful/warning/discard) in the same sentence.
+Never say a commit is "deleted"/"disappears"/"gone" after reset/rebase
+— the object persists in the object database, recoverable via reflog
+until garbage collected; only the branch pointer stops referencing it.
+Exposed secrets/credentials must be rotated regardless of history
+rewrite. Any --hard mention needs a caution word in the same sentence.
 
 ## Real project example rules
-industry_context (e.g. "software team") + scenario + problem + solution
-+ professional_reasoning. Ground in references/workflows.md, connect to
-teamwork/code review/production — not "developer forgot a file." Use
-messy commits before a PR or history cleanup before sharing a branch.
+industry_context + scenario + problem + solution + professional_reasoning.
+Ground in references/workflows.md, connect to teamwork/code review/
+production — not "developer forgot a file." Use messy commits before a
+PR or history cleanup before sharing a branch.
 
 ## Concept mistakes rules
 2-3 entries, distinct levels (beginner/intermediate/professional/
-interview), each with wrong_belief, correct_understanding,
-professional_tip. Ground in references/mistakes.md, no shaming tone.
+interview), with wrong_belief, correct_understanding, professional_tip.
+Ground in references/mistakes.md, no shaming tone.
 
 ## Interview rules
-question, why_interviewer_asks, strong_answer (definition + mechanism +
+question, why_interviewer_asks, strong_answer (definition+mechanism+
 example), weak_answer, 1+ follow_up_question. Ground in references/interview.md.
 
 ## Memory anchor + CTA rules
@@ -103,7 +101,10 @@ appear verbatim as their own shot's voice, at the end. At least 6
 shots, ONE self-contained idea per shot's `voice` (never cram HEAD move
 + index change + working-dir change into one line — that's 3 shots),
 covering hook -> problem -> analogy -> technical (2+ shots) -> real
-example -> memory anchor -> CTA, in that order. No generic visuals
+example -> memory anchor -> CTA, in that order. A validated analogy or
+real-example that's never actually SPOKEN is dead weight — one shot's
+voice must narrate the analogy itself (not skip straight to facts), and
+one must narrate the real project's team/PR/review context. No generic visuals
 ("show logo"). `visual` states WHO's on screen, WHERE, WHAT ACTION —
 e.g. "A developer at a laptop; terminal shows commits A-B-C, C
 highlighted red." `animation` names the specific motion (e.g. "HEAD
