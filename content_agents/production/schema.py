@@ -59,7 +59,7 @@ class QualityReport(BaseModel):
 
 class ProductionPackage(BaseModel):
     reel_metadata: ReelMetadata
-    voice_script: str = Field(description="Plain spoken text, no markdown, no bullet points, ready to paste into an AI voice tool")
+    voice_script: str = Field(description="Plain spoken text, one paragraph per beat with a blank line between (matches natural pause points), no bullet points, ready to paste into an AI voice tool")
     visual_script: list[VisualScene]
     sync_timeline: list[SyncEntry]
     quality_report: QualityReport

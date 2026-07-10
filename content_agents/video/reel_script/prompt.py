@@ -96,11 +96,14 @@ Banned: any comment-ask with no named reward.
 
 ## Storyboard rules — these shots ARE the voice script
 There is no separate narration: voice_script is compiled by joining
-every shot's `voice` line in order. So: at least 6 shots, ONE
-self-contained idea per shot's `voice` (never cram HEAD move + index
-change + working-dir change into one line — that's 3 shots, not one),
+every shot's `voice` line, one per paragraph. shot[0].voice MUST equal
+`hook` word-for-word — not a paraphrase, not the analogy bridge, the
+literal hook. The memory_anchor and engagement_cta text must each
+appear verbatim as their own shot's voice, at the end. At least 6
+shots, ONE self-contained idea per shot's `voice` (never cram HEAD move
++ index change + working-dir change into one line — that's 3 shots),
 covering hook -> problem -> analogy -> technical (2+ shots) -> real
-example -> memory anchor + CTA, in that order. No generic visuals
+example -> memory anchor -> CTA, in that order. No generic visuals
 ("show logo"). `visual` states WHO's on screen, WHERE, WHAT ACTION —
 e.g. "A developer at a laptop; terminal shows commits A-B-C, C
 highlighted red." `animation` names the specific motion (e.g. "HEAD

@@ -152,7 +152,9 @@ def validate(output: ReelScriptOutput) -> None:
         _check_problem, _check_analogy, _check_analogy_completeness, _check_technical_explanation,
         _check_reset_mode_accuracy, _check_no_commit_deletion_claim, _check_technical_safety, _check_hard_reset_warning,
         _check_real_project_example, _check_concept_mistakes, _check_interview, _check_cta, _check_memory_anchor,
-        _check_storyboard, _check_voice_script_pacing, _check_voice_visual_sync, _check_quality_score, _check_comparison,
+        _check_storyboard, _check_voice_script_pacing, _check_voice_visual_sync,
+        _check_first_shot_is_the_hook, _check_anchor_and_cta_are_spoken,
+        _check_quality_score, _check_comparison,
     ]
     issues: list[str] = []
     for check in checks:
@@ -213,6 +215,55 @@ def _check_hook_not_definitional(output: ReelScriptOutput) -> None:
                     f"presenting a situation, question, or consequence. A definition-first hook explains; "
                     f"it doesn't attract. Rewrite using the chosen hook_type's actual pattern."
                 )
+
+
+def _normalize(text: str) -> str:
+    return re.sub(r"[^a-z0-9 ]", "", text.lower()).strip()
+
+
+def _check_first_shot_is_the_hook(output: ReelScriptOutput) -> None:
+    """
+    voice_script is compiled ONLY from visual_storyboard[i].voice — the
+    `hook` field itself never appears in the final output unless shot 0's
+    voice actually IS it. Without this check, `hook` can pass every hook
+    validator while shot 0 says something completely different, and the
+    real hook silently never gets spoken. hook/memory_anchor/engagement_cta
+    are the three fields meant to be spoken VERBATIM (not paraphrased
+    planning text like problem/analogy/technical_explanation), so exact
+    (whitespace/punctuation-normalized) matching is the right bar here.
+    """
+    if not output.visual_storyboard:
+        return
+    first_voice = _normalize(output.visual_storyboard[0].voice)
+    hook = _normalize(output.hook)
+    if first_voice != hook:
+        raise QualityCheckError(
+            f"visual_storyboard[0].voice does not match `hook` word-for-word. hook='{output.hook}' but "
+            f"shot 0's voice='{output.visual_storyboard[0].voice}'. Set shot 0's voice to the hook exactly "
+            f"— it's the line that actually gets spoken, and it must be the hook, not a paraphrase or the "
+            f"analogy bridge."
+        )
+
+
+def _check_anchor_and_cta_are_spoken(output: ReelScriptOutput) -> None:
+    """
+    Same gap as the hook, at the other end: memory_anchor and
+    engagement_cta must appear verbatim somewhere in the actual spoken
+    voice lines, or they're validated-but-never-spoken dead fields.
+    """
+    combined_voice = _normalize(" ".join(shot.voice for shot in output.visual_storyboard))
+    anchor = _normalize(output.memory_anchor)
+    cta = _normalize(output.engagement_cta)
+    if anchor and anchor not in combined_voice:
+        raise QualityCheckError(
+            f"memory_anchor ('{output.memory_anchor}') does not appear word-for-word in any shot's voice "
+            f"line. Put it verbatim as its own shot, right before the CTA."
+        )
+    if cta and cta not in combined_voice:
+        raise QualityCheckError(
+            f"engagement_cta ('{output.engagement_cta}') does not appear word-for-word in any shot's voice "
+            f"line. Put it verbatim as the final shot's voice."
+        )
 
 
 def _check_problem(output: ReelScriptOutput) -> None:
@@ -283,7 +334,14 @@ def _check_technical_explanation(output: ReelScriptOutput) -> None:
 
 
 def _split_sentences(text: str) -> list[str]:
-    return re.split(r"[.!?;\n]", text)
+    """
+    Split on true sentence boundaries only (.!?), not semicolons.
+    Regression: "But --hard changes all; use with caution, discarding
+    changes." is one coherent sentence a writer joined with a semicolon —
+    splitting on ';' separated the --hard mention from its own caution
+    word, producing a false-positive rejection of a perfectly safe claim.
+    """
+    return re.split(r"[.!?\n]", text)
 
 
 # If a sentence explicitly negates the effect ("leaves X untouched"), it's

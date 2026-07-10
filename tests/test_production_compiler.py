@@ -29,11 +29,12 @@ def test_compile_voice_script_is_storyboard_voice_lines_joined():
     assert script.problem.real_world_problem not in package.voice_script
 
 
-def test_compile_voice_script_has_no_run_on_sentences():
+def test_compile_voice_script_has_paragraph_breaks_between_shots():
+    """Each shot is its own paragraph (blank line between), matching the gold example format exactly."""
     script = _valid_output()
     package = compile_production_package(script, _intent())
     shots = script.visual_storyboard
-    assert f"{_s(shots[0].voice)} {_s(shots[1].voice)}" in package.voice_script
+    assert f"{_s(shots[0].voice)}\n\n{_s(shots[1].voice)}" in package.voice_script
 
 
 def test_compile_concept_explanation_metadata():

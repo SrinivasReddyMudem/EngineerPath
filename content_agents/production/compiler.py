@@ -51,7 +51,14 @@ def _s(text: str) -> str:
 
 
 def _compose_voice_script(script: ReelScriptOutput) -> str:
-    return " ".join(_s(shot.voice) for shot in script.visual_storyboard if shot.voice.strip())
+    """
+    One paragraph per shot, blank line between — matches the gold example
+    format exactly (each beat, including each reset mode, gets its own
+    paragraph). A single run-on paragraph is harder to read and to record
+    from; the blank lines are natural pause points for a human VO artist
+    or an AI voice tool.
+    """
+    return "\n\n".join(_s(shot.voice) for shot in script.visual_storyboard if shot.voice.strip())
 
 
 def _parse_unresolved_issues(raw_issues: list[str]) -> list[str]:

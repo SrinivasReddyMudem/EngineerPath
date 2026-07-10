@@ -18,8 +18,8 @@ def _valid_output(**overrides) -> ReelScriptOutput:
             content_boundary="Skip reflog recovery and object database internals — save those for another reel.",
         ),
         recommended_visual_style="Stick figure + animated terminal diagrams",
-        hook="Git reset looks simple, but it changes your entire history in three different ways.",
-        hook_type="curiosity_gap",
+        hook="You just committed the wrong file right before opening a pull request. What do you do now?",
+        hook_type="real_developer_situation",
         problem=ProblemSetup(
             real_world_problem="A developer commits changes but the commit is messy or incomplete.",
             developer_pain="They don't know whether to create another commit or use a cleaner Git approach.",
@@ -77,7 +77,7 @@ def _valid_output(**overrides) -> ReelScriptOutput:
             StoryboardShot(time_range="15-25s", visual="A split-screen terminal window showing the index panel highlighting separately from the working directory panel", animation="Only the index panel highlights while the working directory panel stays dim", camera="Static split-screen shot", voice="Mixed reset also resets the index, keeping your changes staged, while your working directory files stay untouched.", on_screen_text="Index resets, files stay", learning_objective="Show one distinct fact"),
             StoryboardShot(time_range="25-35s", visual="The same split-screen terminal now showing both index and working directory panels highlighting together", animation="Both panels highlight together and files visibly change", camera="Static split-screen shot", voice="Hard reset moves the index and your working directory together, so use caution — uncommitted changes can be lost for good.", on_screen_text="Hard resets everything", learning_objective="Show the contrasting fact"),
             StoryboardShot(time_range="35-50s", visual="A code review screen with a messy commit list next to a cleaned-up version", animation="Commits visually reorganize and merge into clean single entries", camera="Slow pan across the before-and-after commit lists", voice="Professionals mainly reset on local branches before opening a pull request, so reviewers see a clean, easy to follow commit history.", on_screen_text="Clean commits, easier review", learning_objective="Ground in real workflow"),
-            StoryboardShot(time_range="50-60s", visual="A large text overlay of the memory anchor and CTA centered on a dark terminal-style background", animation="The CTA text pulses once and then holds steady", camera="Static centered shot", voice="Remember, reset does not delete your commits right away — reflog can help you recover earlier states. Comment RESET for the cheat sheet.", on_screen_text="Comment RESET", learning_objective="Drive engagement"),
+            StoryboardShot(time_range="50-60s", visual="A large text overlay of the memory anchor and CTA centered on a dark terminal-style background", animation="The CTA text pulses once and then holds steady", camera="Static centered shot", voice="Reset moves your position. Revert makes a correction instead. Comment RESET and I'll send you the full Git reset cheat sheet.", on_screen_text="Comment RESET", learning_objective="Drive engagement"),
         ],
         quality_score=QualityScore(
             technical_accuracy=9, teaching_quality=8, hook_strength=8,
@@ -86,6 +86,26 @@ def _valid_output(**overrides) -> ReelScriptOutput:
     )
     base.update(overrides)
     return ReelScriptOutput(**base)
+
+
+def _with_hook(hook: str, **overrides) -> ReelScriptOutput:
+    """Override hook AND shot[0].voice together, since they must match exactly."""
+    out = _valid_output()
+    shots = list(out.visual_storyboard)
+    s0 = shots[0]
+    shots[0] = StoryboardShot(time_range=s0.time_range, visual=s0.visual, animation=s0.animation, camera=s0.camera, voice=hook, on_screen_text=s0.on_screen_text, learning_objective=s0.learning_objective)
+    overrides.setdefault("visual_storyboard", shots)
+    return _valid_output(hook=hook, **overrides)
+
+
+def _with_cta(cta: str, **overrides) -> ReelScriptOutput:
+    """Override engagement_cta AND the last shot's voice together, since the CTA must be spoken verbatim."""
+    out = _valid_output()
+    shots = list(out.visual_storyboard)
+    last = shots[-1]
+    shots[-1] = StoryboardShot(time_range=last.time_range, visual=last.visual, animation=last.animation, camera=last.camera, voice=f"{out.memory_anchor} {cta}", on_screen_text=last.on_screen_text, learning_objective=last.learning_objective)
+    overrides.setdefault("visual_storyboard", shots)
+    return _valid_output(engagement_cta=cta, **overrides)
 
 
 def test_valid_output_passes():
@@ -194,13 +214,13 @@ def test_weak_cta_without_reward_fails():
 
 
 def test_follow_named_series_cta_passes():
-    out = _valid_output(engagement_cta="Follow the Daily Git Series for a new concept every day.")
+    out = _with_cta("Follow the Daily Git Series for a new concept every day.")
     validators.validate(out)
 
 
 def test_follow_named_channel_cta_passes():
     """Regression: 'Follow EngineerPath for more...' has no 'series' keyword but names a specific channel."""
-    out = _valid_output(engagement_cta="Follow EngineerPath for more software concepts explained with real engineering examples.")
+    out = _with_cta("Follow EngineerPath for more software concepts explained with real engineering examples.")
     validators.validate(out)
 
 
@@ -417,7 +437,7 @@ def test_definitional_hook_fails():
 
 
 def test_situational_hook_passes():
-    out = _valid_output(hook="You just committed the wrong file before opening a pull request. What do you do?", topic="Git Reset")
+    out = _with_hook("You just committed the wrong file before opening a pull request. What do you do?", topic="Git Reset")
     validators.validate(out)
 
 
@@ -457,3 +477,32 @@ def test_double_negation_delete_phrasing_passes():
         internal_working="Soft moves only HEAD; mixed also resets the index while leaving the working directory alone.",
     ))
     validators.validate(out)
+
+
+def test_shot_zero_not_matching_hook_fails():
+    """The exact gap this section closes: hook can be perfectly valid while shot 0 says something else entirely."""
+    out = _valid_output()
+    shots = list(out.visual_storyboard)
+    s0 = shots[0]
+    shots[0] = StoryboardShot(
+        time_range=s0.time_range, visual=s0.visual, animation=s0.animation, camera=s0.camera,
+        voice="Imagine a video editing timeline for a moment before we get started.",
+        on_screen_text=s0.on_screen_text, learning_objective=s0.learning_objective,
+    )
+    out2 = _valid_output(visual_storyboard=shots)
+    with pytest.raises(QualityCheckError, match="does not match `hook`"):
+        validators.validate(out2)
+
+
+def test_memory_anchor_not_spoken_fails():
+    out = _valid_output()
+    shots = list(out.visual_storyboard)
+    last = shots[-1]
+    shots[-1] = StoryboardShot(
+        time_range=last.time_range, visual=last.visual, animation=last.animation, camera=last.camera,
+        voice="Comment RESET and I'll send you the full Git reset cheat sheet.",  # CTA present, anchor missing
+        on_screen_text=last.on_screen_text, learning_objective=last.learning_objective,
+    )
+    out2 = _valid_output(visual_storyboard=shots)
+    with pytest.raises(QualityCheckError, match="memory_anchor"):
+        validators.validate(out2)
