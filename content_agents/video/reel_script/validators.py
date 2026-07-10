@@ -148,11 +148,11 @@ def validate(output: ReelScriptOutput) -> None:
     whichever check happened to run first.
     """
     checks = [
-        _check_content_plan, _check_no_preamble, _check_hook_not_fear_or_generic, _check_problem,
-        _check_analogy, _check_analogy_completeness, _check_technical_explanation,
+        _check_content_plan, _check_no_preamble, _check_hook_not_fear_or_generic, _check_hook_not_definitional,
+        _check_problem, _check_analogy, _check_analogy_completeness, _check_technical_explanation,
         _check_reset_mode_accuracy, _check_no_commit_deletion_claim, _check_technical_safety, _check_hard_reset_warning,
         _check_real_project_example, _check_concept_mistakes, _check_interview, _check_cta, _check_memory_anchor,
-        _check_storyboard, _check_quality_score, _check_comparison,
+        _check_storyboard, _check_voice_script_pacing, _check_voice_visual_sync, _check_quality_score, _check_comparison,
     ]
     issues: list[str] = []
     for check in checks:
@@ -189,6 +189,30 @@ def _check_hook_not_fear_or_generic(output: ReelScriptOutput) -> None:
             raise QualityCheckError(f"hook uses generic AI phrase '{banned}'. Rewrite in a specific, human voice.")
     if len(output.hook.strip()) < 10:
         raise QualityCheckError("hook is too short to be a real opening line.")
+
+
+DEFINITIONAL_OPENING_PATTERNS = [" is a ", " is the ", " is used to ", " helps you ", " allows you to ", " lets you ", " means that "]
+
+
+def _check_hook_not_definitional(output: ReelScriptOutput) -> None:
+    """
+    A hook that opens by defining the topic ("Git Reset helps you fix
+    mistakes") explains instead of attracting — it reads like the first
+    line of documentation, not something that makes a viewer stop
+    scrolling. Every approved hook_type presents a situation, question,
+    or consequence instead.
+    """
+    hook_lower = output.hook.lower().strip()
+    topic_lower = output.topic.lower().strip()
+    opening = hook_lower[:60]
+    if topic_lower and topic_lower in opening:
+        for pattern in DEFINITIONAL_OPENING_PATTERNS:
+            if pattern in opening:
+                raise QualityCheckError(
+                    f"hook opens by defining '{output.topic}' (pattern '{pattern.strip()}') instead of "
+                    f"presenting a situation, question, or consequence. A definition-first hook explains; "
+                    f"it doesn't attract. Rewrite using the chosen hook_type's actual pattern."
+                )
 
 
 def _check_problem(output: ReelScriptOutput) -> None:
@@ -270,6 +294,9 @@ NEGATION_INDICATORS = [
     "remains the same", "stays the same", "no changes", "stay in the working",
     "stays in the working", "remain in the working", "remains in the working",
     "not reset", "isn't reset", "is not reset",
+    "not delete", "doesn't delete", "does not delete",
+    "not remove", "doesn't remove", "does not remove",
+    "not erase", "doesn't erase", "does not erase",
 ]
 
 
@@ -502,13 +529,16 @@ def _check_cta(output: ReelScriptOutput) -> None:
     has_comment_pattern = "comment" in cta_lower
     has_tag_pattern = "tag a friend" in cta_lower or "tag someone" in cta_lower
     has_save_pattern = "save this" in cta_lower
-    has_series_pattern = "follow" in cta_lower and "series" in cta_lower
+    # "follow" alone is fine as long as it isn't one of BANNED_CTA_PHRASES
+    # above (e.g. bare "follow for more") — "Follow EngineerPath" names a
+    # specific channel, which is exactly what makes it not generic.
+    has_follow_pattern = "follow" in cta_lower
     has_reward = any(r in cta_lower for r in CTA_REWARD_INDICATORS)
 
-    if not (has_comment_pattern or has_tag_pattern or has_save_pattern or has_series_pattern):
+    if not (has_comment_pattern or has_tag_pattern or has_save_pattern or has_follow_pattern):
         raise QualityCheckError(
             "engagement_cta must use one of: comment-for-reward, tag a friend, save-this-for-later, "
-            "or follow-a-named-series — found none of these patterns."
+            "or follow (naming a specific channel/series) — found none of these patterns."
         )
     if has_comment_pattern and not (has_tag_pattern or has_save_pattern) and not has_reward:
         raise QualityCheckError(
@@ -546,6 +576,48 @@ def _check_storyboard(output: ReelScriptOutput) -> None:
             raise QualityCheckError(f"visual_storyboard[{i}].on_screen_text is empty or too short.")
         if len(shot.learning_objective.strip()) < MIN_LEARNING_OBJECTIVE_LEN:
             raise QualityCheckError(f"visual_storyboard[{i}].learning_objective is empty or too short.")
+
+
+MIN_VOICE_SCRIPT_WORDS = 110  # a 60s reel spoken at natural pace needs enough words to actually fill the time
+MAX_VOICE_SCRIPT_WORDS = 190  # too many words for 60s reads rushed, not natural
+
+
+def _check_voice_script_pacing(output: ReelScriptOutput) -> None:
+    """voice_script is the join of every shot's voice line (see StoryboardShot docstring) — check it as a whole, not per shot."""
+    total_words = sum(len(shot.voice.split()) for shot in output.visual_storyboard)
+    if total_words < MIN_VOICE_SCRIPT_WORDS:
+        raise QualityCheckError(
+            f"voice_script (all shots' voice lines combined) is only {total_words} words — too short to "
+            f"naturally fill 60 seconds spoken aloud (need {MIN_VOICE_SCRIPT_WORDS}-{MAX_VOICE_SCRIPT_WORDS})."
+        )
+    if total_words > MAX_VOICE_SCRIPT_WORDS:
+        raise QualityCheckError(
+            f"voice_script (all shots' voice lines combined) is {total_words} words — too dense to speak "
+            f"naturally in 60 seconds (need {MIN_VOICE_SCRIPT_WORDS}-{MAX_VOICE_SCRIPT_WORDS}). Trim, don't rush."
+        )
+
+
+def _check_voice_visual_sync(output: ReelScriptOutput) -> None:
+    """
+    The sync gap reviewers flagged: a shot's voice can discuss one
+    concept (e.g. HEAD moving) while its visual shows something
+    unrelated. Reuses the same concept-detection used for analogy
+    completeness — if the voice names a structural concept, the visual
+    side of the SAME shot must reference it too.
+    """
+    for i, shot in enumerate(output.visual_storyboard):
+        voice_concepts = _detect_concepts(shot.voice.lower())
+        if not voice_concepts:
+            continue
+        visual_side = f"{shot.visual} {shot.animation} {shot.on_screen_text}".lower()
+        visual_concepts = _detect_concepts(visual_side)
+        missing = voice_concepts - visual_concepts
+        if missing:
+            raise QualityCheckError(
+                f"visual_storyboard[{i}]: voice mentions {sorted(voice_concepts)} but the visual/animation/"
+                f"on_screen_text don't reflect {sorted(missing)} — the screen must show what's being said, "
+                f"not something unrelated."
+            )
 
 
 def _check_comparison(output: ReelScriptOutput) -> None:

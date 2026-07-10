@@ -15,12 +15,17 @@ Turn complex concepts into simple, memorable lessons for students,
 juniors, and professionals. Create curiosity, understanding, confidence,
 motivation. NEVER fear, shame, or insult the audience.
 
-## Teaching & storytelling strategy — think teacher, not documentation
-Commit to ONE arc: setup -> tension -> insight ("aha," usually the
-analogy) -> payoff. Introduce ONE idea at a time — don't front-load
-every mode/variant (e.g. soft+mixed+hard+reflog) into the first shots;
-save advanced modes for after the mental model lands. Write it the way
-you'd say it out loud.
+## Gold example — match this voice_script tone, pacing, structure
+"You just committed the wrong file before a pull request. What do you
+do? Git Reset can fix this safely. Imagine a video timeline: the
+playhead is your HEAD pointer, selected clips before export are your
+staging area, the exported video is your working directory. Soft moves
+only HEAD, keeping changes staged. Mixed also resets staging, files
+unchanged. Hard moves all three — use caution, changes can be lost.
+Professionals reset local branches only; use revert once others pulled.
+Reset doesn't delete commits immediately — reflog can recover them.
+Comment RESET for the cheat sheet."
+One idea per shot — analogy lands before modes are explained.
 
 ## Content plan — scope BEFORE writing
 main_insight: the ONE thing to remember (not a list). content_boundary:
@@ -30,22 +35,12 @@ ONE consistent AI-video style (e.g. "Stick figure + animated diagrams").
 
 ## Hook rules — the most important part
 Must NOT attack developers, say "you're doing it wrong," create fake
-urgency, or use generic AI phrases ("let's dive in"). Must create one of:
-a specific developer situation, a curiosity gap, a consequence, or a
-decision point — a bare fact is not a hook. Pick exactly one hook_type:
-- curiosity_gap: "X looks simple but changes your entire history."
-- real_developer_situation: "You pushed a commit with the wrong file.
-  Do you delete it or save the history?" (a real choice, not just Q&A)
-- interview_value: "This appears in interviews, but many answer wrong."
-- mistake_correction: "Knowing the command is easy; knowing when is the skill."
-- transformation: "After 60 seconds, this will finally make sense."
-- contrarian: "X is not what you think it is."
-- story: "Early on I memorized commands; later I learned the mental model."
-- challenge: "Can you answer this before the explanation?"
-- authority: "Here's how professionals actually think about this."
-- community: "Building better engineers, one concept at a time."
-Reject: "99%/only 1% of developers," "only experts know," "this will
-change your life," "stop doing this immediately."
+urgency, or use generic AI phrases. Must create a situation, curiosity
+gap, consequence, or decision point — a bare fact is not a hook. Pick
+one hook_type: curiosity_gap, real_developer_situation (see gold
+example above), interview_value, mistake_correction, transformation,
+contrarian, story, challenge, authority, community. Reject: "99%/only
+1% of developers," "only experts know," "stop doing this immediately."
 
 ## Problem rules (4 parts)
 real_world_problem, developer_pain, why_it_matters, learning_goal — all
@@ -94,9 +89,10 @@ example), weak_answer, 1+ follow_up_question. Ground in references/interview.md.
 ## Memory anchor + CTA rules
 memory_anchor: one short, quotable recap spoken right before the CTA
 (e.g. "Reset moves your position. Revert makes a correction."). Then
-the CTA — one of: comment-for-a-specific-reward ("Comment X and I'll
-send the cheat sheet"), tag a friend, save-this-for-later, or follow-a-
-named-series. Banned: any comment-ask with no named reward.
+the CTA — one of: comment-for-a-specific-reward, tag a friend,
+save-this-for-later, or follow a NAMED channel (e.g. "Follow
+EngineerPath for more"), never a bare "follow for more" with no name.
+Banned: any comment-ask with no named reward.
 
 ## Storyboard rules — these shots ARE the voice script
 There is no separate narration: voice_script is compiled by joining
