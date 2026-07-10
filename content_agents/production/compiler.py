@@ -38,6 +38,9 @@ INTENT_LABELS = {
     "quick_tip": "Quick Tip",
 }
 
+MAX_AVG_VOICE_WORDS = 20  # above this, voice lines read like documentation, not spoken narration
+EARLY_JARGON_TERMS = ["--soft", "--mixed", "--hard", "reflog", "garbage collect"]  # front-loading these in shot 1-2 = poor teaching flow
+
 
 def _s(text: str) -> str:
     """Ensure a fragment ends with terminal punctuation before it's joined with the next one."""
@@ -107,15 +110,24 @@ def compile_production_package(
 
     qs = script.quality_score
     technical_correctness = "PASS" if qs.technical_accuracy >= 9 else "FAIL"
-    command_safety = "FAIL" if _notes_mention(notes, "sensitive data", "rotate", "reflog") else "PASS"
+    command_safety = "FAIL" if _notes_mention(notes, "sensitive data", "rotate", "reflog", "caution word") else "PASS"
     example_correctness = "FAIL" if _notes_mention(notes, "real_project_example") else "PASS"
     beginner_clarity = "PASS" if qs.teaching_quality >= 7 else "FAIL"
+    cta_quality = "FAIL" if _notes_mention(notes, "engagement_cta") else "PASS"
     hook_quality = "PASS" if qs.hook_strength >= 8 else "FAIL"
     analogy_quality = "PASS" if qs.analogy_quality >= 8 else "FAIL"
     visual_generation_readiness = "PASS" if all(
         len(s.visual.split()) >= MIN_VISUAL_WORDS and len(s.animation.split()) >= MIN_ANIMATION_WORDS
         and s.on_screen_text.strip() for s in visual_script
     ) else "FAIL"
+
+    voice_words = [len(shot.voice.split()) for shot in script.visual_storyboard if shot.voice.strip()]
+    avg_voice_words = sum(voice_words) / len(voice_words) if voice_words else 0
+    voice_naturalness = "PASS" if avg_voice_words <= MAX_AVG_VOICE_WORDS else "FAIL"
+
+    early_shots_text = " ".join(shot.voice.lower() for shot in script.visual_storyboard[:2])
+    jargon_hits = sum(1 for term in EARLY_JARGON_TERMS if term in early_shots_text)
+    teaching_flow = "FAIL" if jargon_hits >= 2 else "PASS"
 
     if isinstance(critique, ReelCritique):
         retention = "PASS" if critique.retention.score >= 7 else "FAIL"
@@ -127,6 +139,7 @@ def compile_production_package(
 
     checked_fields = [
         technical_correctness, command_safety, example_correctness, beginner_clarity,
+        voice_naturalness, teaching_flow, cta_quality,
         visual_generation_readiness, hook_quality, analogy_quality,
     ]
     all_pass = all(v == "PASS" for v in checked_fields) and retention == "PASS"
@@ -135,6 +148,7 @@ def compile_production_package(
     quality_report = QualityReport(
         technical_correctness=technical_correctness, command_safety=command_safety,
         example_correctness=example_correctness, beginner_clarity=beginner_clarity,
+        voice_naturalness=voice_naturalness, teaching_flow=teaching_flow, cta_quality=cta_quality,
         retention=retention, visual_generation_readiness=visual_generation_readiness,
         hook_quality=hook_quality, analogy_quality=analogy_quality,
         overall=overall, notes=notes,

@@ -39,7 +39,7 @@ def _valid_output(**overrides) -> ReelScriptOutput:
             level_1_beginner="Reset moves where your branch is pointing to in history.",
             level_2_developer="Reset moves the branch pointer and, depending on mode, may also reset the index; --mixed leaves the working directory untouched.",
             level_3_professional="Teams choose --soft to reorganize commits, --mixed to unstage, and --hard only when discarding local work entirely.",
-            internal_working="Soft moves only HEAD; mixed also resets the index while leaving the working directory alone; hard resets HEAD, index, and working directory together.",
+            internal_working="Soft moves only HEAD; mixed also resets the index while leaving the working directory alone; hard resets HEAD, index, and working directory together, so use caution as this discards uncommitted changes.",
         ),
         real_project_example=RealProjectExample(
             industry_context="software team",
@@ -75,7 +75,7 @@ def _valid_output(**overrides) -> ReelScriptOutput:
             StoryboardShot(time_range="0-5s", visual="A developer at a laptop looking confused at a messy commit they just made", animation="The developer leans toward the screen, squinting at the terminal", camera="Close-up on the developer's face then whip to the screen", voice="You just made a commit and realize it's wrong.", on_screen_text="Wrong commit?", learning_objective="Create the problem"),
             StoryboardShot(time_range="5-15s", visual="A developer at a laptop; terminal shows a commit timeline A-B-C-D on screen", animation="The HEAD pointer slides backward from D to C", camera="Zoom into the commit history", voice="Reset moves your branch pointer to a different commit.", on_screen_text="HEAD moves back", learning_objective="Introduce the mental model"),
             StoryboardShot(time_range="15-25s", visual="A split-screen terminal window showing the index panel highlighting separately from the working directory panel", animation="Only the index panel highlights while the working directory panel stays dim", camera="Static split-screen shot", voice="Mixed reset also resets the index, but leaves your files untouched.", on_screen_text="Index resets, files stay", learning_objective="Show one distinct fact"),
-            StoryboardShot(time_range="25-35s", visual="The same split-screen terminal now showing both index and working directory panels highlighting together", animation="Both panels highlight together and files visibly change", camera="Static split-screen shot", voice="Hard reset resets the index and your working files together.", on_screen_text="Hard resets everything", learning_objective="Show the contrasting fact"),
+            StoryboardShot(time_range="25-35s", visual="The same split-screen terminal now showing both index and working directory panels highlighting together", animation="Both panels highlight together and files visibly change", camera="Static split-screen shot", voice="Hard reset resets the index and your working files together, so use caution.", on_screen_text="Hard resets everything", learning_objective="Show the contrasting fact"),
             StoryboardShot(time_range="35-50s", visual="A code review screen with a messy commit list next to a cleaned-up version", animation="Commits visually reorganize and merge into clean single entries", camera="Slow pan across the before-and-after commit lists", voice="Professionals clean commits before review, so reviewers see clear intent.", on_screen_text="Clean commits, easier review", learning_objective="Ground in real workflow"),
             StoryboardShot(time_range="50-60s", visual="A large text overlay of the memory anchor and CTA centered on a dark terminal-style background", animation="The CTA text pulses once and then holds steady", camera="Static centered shot", voice="Comment RESET for the cheat sheet.", on_screen_text="Comment RESET", learning_objective="Drive engagement"),
         ],
@@ -357,10 +357,10 @@ def test_commit_disappears_claim_fails():
 
 def test_commit_pointer_stops_referencing_claim_passes():
     out = _valid_output(technical_explanation=TechnicalExplanation(
-        level_1_beginner="When you run reset --hard, the branch pointer stops referencing that commit.",
+        level_1_beginner="When you run reset --hard, use caution — the branch pointer stops referencing that commit.",
         level_2_developer="Reset moves the branch pointer and, depending on mode, may also reset the index.",
         level_3_professional="Teams choose --soft to reorganize commits, --mixed to unstage, and --hard only when discarding local work entirely.",
-        internal_working="Soft moves only HEAD; mixed also resets the index while leaving the working directory alone; hard resets HEAD, index, and working directory together.",
+        internal_working="Soft moves only HEAD; mixed also resets the index while leaving the working directory alone; use caution — hard resets HEAD, index, and working directory together.",
     ))
     validators.validate(out)
 
@@ -375,3 +375,24 @@ def test_missing_camera_field_fails():
     out = _valid_output(visual_storyboard=shots)
     with pytest.raises(QualityCheckError):
         validators.validate(out)
+
+
+def test_hard_reset_without_caution_word_fails():
+    out = _valid_output(technical_explanation=TechnicalExplanation(
+        level_1_beginner="Use git reset --hard to move everything back to that commit.",
+        level_2_developer="Reset moves the branch pointer and, depending on mode, may also reset the index.",
+        level_3_professional="Teams choose --soft to reorganize commits and --mixed to unstage changes cleanly.",
+        internal_working="Soft moves only HEAD; mixed also resets the index while leaving the working directory alone.",
+    ))
+    with pytest.raises(QualityCheckError, match="no caution word"):
+        validators.validate(out)
+
+
+def test_hard_reset_with_caution_word_passes():
+    out = _valid_output(technical_explanation=TechnicalExplanation(
+        level_1_beginner="Use git reset --hard with caution, since it discards uncommitted changes permanently.",
+        level_2_developer="Reset moves the branch pointer and, depending on mode, may also reset the index.",
+        level_3_professional="Teams choose --soft to reorganize commits and --mixed to unstage changes cleanly.",
+        internal_working="Soft moves only HEAD; mixed also resets the index while leaving the working directory alone.",
+    ))
+    validators.validate(out)

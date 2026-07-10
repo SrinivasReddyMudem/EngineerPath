@@ -150,8 +150,8 @@ def validate(output: ReelScriptOutput) -> None:
     checks = [
         _check_content_plan, _check_no_preamble, _check_hook_not_fear_or_generic, _check_problem,
         _check_analogy, _check_analogy_completeness, _check_technical_explanation,
-        _check_reset_mode_accuracy, _check_no_commit_deletion_claim, _check_technical_safety, _check_real_project_example,
-        _check_concept_mistakes, _check_interview, _check_cta, _check_memory_anchor,
+        _check_reset_mode_accuracy, _check_no_commit_deletion_claim, _check_technical_safety, _check_hard_reset_warning,
+        _check_real_project_example, _check_concept_mistakes, _check_interview, _check_cta, _check_memory_anchor,
         _check_storyboard, _check_quality_score, _check_comparison,
     ]
     issues: list[str] = []
@@ -347,6 +347,29 @@ def _check_no_commit_deletion_claim(output: ReelScriptOutput) -> None:
                     f"{field_name} claims a commit is deleted/disappears/gone after reset or rebase. "
                     f"Say the branch pointer stops referencing it instead — the commit object persists "
                     f"in the object database and is recoverable via reflog until garbage collected."
+                )
+
+
+CAUTION_WORDS = ["careful", "caution", "warning", "discard", "irreversible", "risky", "danger"]
+
+
+def _check_hard_reset_warning(output: ReelScriptOutput) -> None:
+    """
+    Beginners copy commands verbatim from a 60-second reel — any mention
+    of --hard (the one mode that actually discards working directory
+    changes) needs a caution word in the same sentence, not a bare
+    demonstration with no risk signal.
+    """
+    for field_name, text in _fact_bearing_fields(output).items():
+        for sentence in _split_sentences(text):
+            s = sentence.lower()
+            if "--hard" not in s and "hard reset" not in s:
+                continue
+            if not any(word in s for word in CAUTION_WORDS):
+                raise QualityCheckError(
+                    f"{field_name} mentions --hard with no caution word (careful/warning/discard/"
+                    f"irreversible) in the same sentence — beginners may copy it verbatim without "
+                    f"realizing it discards uncommitted working directory changes."
                 )
 
 

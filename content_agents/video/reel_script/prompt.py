@@ -10,17 +10,17 @@ RULES = """
 Write a 60-second Reel/Shorts script for ONE technical topic. Output
 must match the schema exactly — no free text.
 
-## Content philosophy — read this first
-Turn complex engineering concepts into simple, memorable, practical
-lessons for students, juniors, and professionals sharpening
-fundamentals. Every script creates curiosity, understanding, confidence,
+## Content philosophy
+Turn complex concepts into simple, memorable lessons for students,
+juniors, and professionals. Create curiosity, understanding, confidence,
 motivation. NEVER fear, shame, or insult the audience.
 
 ## Teaching & storytelling strategy — think teacher, not documentation
-Commit to ONE teaching approach (analogy-first, problem-first, or
-contrast-first) and ONE arc: setup -> tension -> insight ("aha," usually
-the analogy) -> payoff (viewer can now do something new). Every section
-answers "why should I care." Write it the way you'd say it out loud.
+Commit to ONE arc: setup -> tension -> insight ("aha," usually the
+analogy) -> payoff. Introduce ONE idea at a time — don't front-load
+every mode/variant (e.g. soft+mixed+hard+reflog) into the first shots;
+save advanced modes for after the mental model lands. Write it the way
+you'd say it out loud.
 
 ## Content plan — scope BEFORE writing
 main_insight: the ONE thing to remember (not a list). content_boundary:
@@ -49,8 +49,7 @@ change your life," "stop doing this immediately."
 
 ## Problem rules (4 parts)
 real_world_problem, developer_pain, why_it_matters, learning_goal — all
-concrete. Never "this topic is difficult." Pull real confusion from
-references/mistakes.md, minus the fear framing.
+concrete. Never "this topic is difficult." Ground in references/mistakes.md.
 
 ## Analogy rules
 One scenario (references/analogies.md) + at least 2 mapping pairs
@@ -74,7 +73,8 @@ rebase — the object persists in the object database and is recoverable
 via reflog until garbage collected; only the branch pointer stops
 referencing it. This applies everywhere, not just when discussing
 secrets — but is especially critical there: exposed secrets/credentials
-must be rotated regardless of any history rewrite.
+must be rotated regardless of any history rewrite. Any --hard mention
+needs a caution word (careful/warning/discard) in the same sentence.
 
 ## Real project example rules
 industry_context (e.g. "software team") + scenario + problem + solution

@@ -79,3 +79,39 @@ def test_compile_notes_parsed_from_unresolved_issues():
     )
     assert package.quality_report.notes == ["First issue text.", "Second issue text."]
     assert package.quality_report.overall == "NOT_READY"
+
+
+def test_compile_cta_quality_fails_when_noted():
+    package = compile_production_package(
+        _valid_output(), _intent(),
+        unresolved_issues=["1 issue(s) found:\n1. engagement_cta uses banned generic phrase 'follow for more'."],
+    )
+    assert package.quality_report.cta_quality == "FAIL"
+
+
+def test_compile_teaching_flow_fails_when_jargon_front_loaded():
+    from content_agents.video.reel_script.schema import StoryboardShot
+    script = _valid_output()
+    shots = list(script.visual_storyboard)
+    shots[0] = StoryboardShot(
+        time_range=shots[0].time_range, visual=shots[0].visual, animation=shots[0].animation,
+        camera=shots[0].camera, voice="--soft, --mixed, and --hard all work differently, with reflog recovery too.",
+        on_screen_text=shots[0].on_screen_text, learning_objective=shots[0].learning_objective,
+    )
+    package = compile_production_package(_valid_output(visual_storyboard=shots), _intent())
+    assert package.quality_report.teaching_flow == "FAIL"
+
+
+def test_compile_voice_naturalness_fails_when_lines_too_long():
+    from content_agents.video.reel_script.schema import StoryboardShot
+    script = _valid_output()
+    long_voice = " ".join(["word"] * 30)
+    shots = [
+        StoryboardShot(
+            time_range=s.time_range, visual=s.visual, animation=s.animation, camera=s.camera,
+            voice=long_voice, on_screen_text=s.on_screen_text, learning_objective=s.learning_objective,
+        )
+        for s in script.visual_storyboard
+    ]
+    package = compile_production_package(_valid_output(visual_storyboard=shots), _intent())
+    assert package.quality_report.voice_naturalness == "FAIL"

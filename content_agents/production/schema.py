@@ -43,9 +43,12 @@ class SyncEntry(BaseModel):
 
 class QualityReport(BaseModel):
     technical_correctness: PassFail
-    command_safety: PassFail = Field(description="Whether any destructive-command claim about sensitive data was made without the reflog/rotate caveat")
+    command_safety: PassFail = Field(description="Whether any destructive-command claim about sensitive data was made without the reflog/rotate caveat, or --hard was mentioned with no caution word")
     example_correctness: PassFail
     beginner_clarity: PassFail
+    voice_naturalness: PassFail = Field(description="Average words per storyboard voice line — too high reads like documentation, not spoken narration")
+    teaching_flow: PassFail = Field(description="Whether reset-mode jargon (soft/mixed/hard/reflog) is front-loaded into the first two shots instead of introduced after the mental model lands")
+    cta_quality: PassFail
     retention: PassFail = Field(description="From the independent critique's retention score if that agent is enabled, otherwise from the internal self-rated shareability score")
     visual_generation_readiness: PassFail
     hook_quality: PassFail
